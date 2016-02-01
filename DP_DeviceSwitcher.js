@@ -28,7 +28,7 @@ Imported.DP_DeviceSwitcher = true;
  * Default: true
  * @default true
  *
- * @param KeyboadInput
+ * @param KeyboardInput
  * @desc キーボード入力を有効にします
  * Default: true
  * @default true
@@ -57,7 +57,7 @@ Imported.DP_DeviceSwitcher = true;
     var user_use_mouse = Boolean(parameters['MouseInput'] === 'true' || false);
     var user_use_touch = Boolean(parameters['TouchInput'] === 'true' || false);
     var user_use_gamepad = Boolean(parameters['PadInput'] === 'true' || false);
-    var user_use_keyboad = Boolean(parameters['KeyboadInput'] === 'true' || false);
+    var user_use_keyboard = Boolean(parameters['KeyboardInput'] === 'true' || false);
     var user_switch = Number(parameters['UseSwitch'] || -1);
     
     var isUsePlugin = (function(){
@@ -74,7 +74,7 @@ Imported.DP_DeviceSwitcher = true;
     */
     var _Input_onKeyDown = Input._onKeyDown;
     Input._onKeyDown = function(event) {
-        if (isUsePlugin() && !user_use_keyboad) {
+        if (isUsePlugin() && !user_use_keyboard) {
             this.clear();
             event.preventDefault();
             return;
@@ -96,7 +96,7 @@ Imported.DP_DeviceSwitcher = true;
     rpg_core: TouchInput
     ==========================================================================================
     */
-    var MouseInputFactory = function(_function){
+    var mouseInputFactory = function(_function){
         var __function = _function;
         return function(_arg){
             if (isUsePlugin() && !user_use_mouse) {
@@ -106,7 +106,7 @@ Imported.DP_DeviceSwitcher = true;
         };
     };
     
-    var TouchInputFactory = function(_function){
+    var touchInputFactory = function(_function){
         var __function = _function;
         return function(_arg){
             if (isUsePlugin() && !user_use_touch) {
@@ -116,18 +116,18 @@ Imported.DP_DeviceSwitcher = true;
         };
     };
     
-    TouchInput._onMouseDown = MouseInputFactory(TouchInput._onMouseDown);
-    TouchInput._onLeftButtonDown = MouseInputFactory(TouchInput._onLeftButtonDown);
-    TouchInput._onMiddleButtonDown = MouseInputFactory(TouchInput._onMouseDown);
-    TouchInput._onRightButtonDown = MouseInputFactory(TouchInput._onRightButtonDown);
-    TouchInput._onMouseMove = MouseInputFactory(TouchInput._onMouseMove);
-    TouchInput._onMouseUp = MouseInputFactory(TouchInput._onMouseUp);
-    TouchInput._onWheel = MouseInputFactory(TouchInput._onWheel);
+    TouchInput._onMouseDown = mouseInputFactory(TouchInput._onMouseDown);
+    TouchInput._onLeftButtonDown = mouseInputFactory(TouchInput._onLeftButtonDown);
+    TouchInput._onMiddleButtonDown = mouseInputFactory(TouchInput._onMouseDown);
+    TouchInput._onRightButtonDown = mouseInputFactory(TouchInput._onRightButtonDown);
+    TouchInput._onMouseMove = mouseInputFactory(TouchInput._onMouseMove);
+    TouchInput._onMouseUp = mouseInputFactory(TouchInput._onMouseUp);
+    TouchInput._onWheel = mouseInputFactory(TouchInput._onWheel);
     
-    TouchInput._onTouchStart = TouchInputFactory(TouchInput._onTouchStart);
-    TouchInput._onTouchMove = TouchInputFactory(TouchInput._onTouchMove);
-    TouchInput._onTouchEnd = TouchInputFactory(TouchInput._onTouchEnd);
-    TouchInput._onTouchCancel = TouchInputFactory(TouchInput._onTouchCancel);
-    TouchInput._onPointerDown = TouchInputFactory(TouchInput._onPointerDown);
+    TouchInput._onTouchStart = touchInputFactory(TouchInput._onTouchStart);
+    TouchInput._onTouchMove = touchInputFactory(TouchInput._onTouchMove);
+    TouchInput._onTouchEnd = touchInputFactory(TouchInput._onTouchEnd);
+    TouchInput._onTouchCancel = touchInputFactory(TouchInput._onTouchCancel);
+    TouchInput._onPointerDown = touchInputFactory(TouchInput._onPointerDown);
     
 }());
