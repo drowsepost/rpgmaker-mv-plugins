@@ -1,18 +1,18 @@
 //=============================================================================
-// drowsepost Plugins - Map Camera Controller
-// DP_MapCamera.js
+// drowsepost Plugins - Map Zooming Controller
+// DP_MapZoom.js
 // Version: 0.35
 // canotun
 //=============================================================================
 
 var Imported = Imported || {};
-Imported.DP_MapCamera = true;
+Imported.DP_MapZoom = true;
 
 var drowsepost = drowsepost || {};
 
 //=============================================================================
  /*:
- * @plugindesc マップの拡大率を制御します。v0.35(20160126)
+ * @plugindesc マップの拡大率を制御します。v0.4(20160310)
  * @author drowsepost
  *
  * @param Base Scale
@@ -22,6 +22,11 @@ var drowsepost = drowsepost || {};
  *
  * @param Encount Effect
  * @desc エンカウントエフェクトに拡大率を反映(ON: true / OFF: false)
+ * Default: true
+ * @default true
+ *
+ * @param Use Hack
+ * @desc 画面拡大率変更時に画面にゴミが残る問題への対応(ON: true / OFF: false)
  * Default: true
  * @default true
  *
@@ -37,6 +42,10 @@ var drowsepost = drowsepost || {};
  * しかしその場合、画面の拡大率をそれぞれ反映できるように調整する必要があります。
  * 現在の画面の拡大率は$gameScreen.zoomScale()で取得できます。
  * これはプラグインの利用に関わらず元から存在する関数です。
+ *
+ * マップのメモ欄に対して
+ * <zoomScale:0.5>
+ * などと記述すると、マップごとに基準になる拡大率を指定することが出来ます。
  * 
  * プラグインコマンドにて
  * mapSetZoom {倍率} {変更にかけるフレーム数} {対象イベントID}
@@ -52,6 +61,9 @@ var drowsepost = drowsepost || {};
  * 指定された拡大率設定は$gameMap._dp_scaleが保持します。
  * シーン離脱時のスクロール量は$gameMap._dp_panが保持します。
  * 
+ * 他のプラグインで利用する「screenX」や「screenY」がずれる場合は、
+ * 「screenX」や「screenY」にそれぞれ$gameScreen.zoomScale()を掛けて下さい。
+ * 
  * ===
  * このプラグインは試作品です。
  * いくつかのプライベートプロパティーを参照しているため、
@@ -65,9 +77,10 @@ var drowsepost = drowsepost || {};
  */
 (function() {
     "use strict";
-    var parameters = PluginManager.parameters('DP_MapCamera');
+    var parameters = PluginManager.parameters('DP_MapZoom');
     var user_scale = Number(parameters['Base Scale'] || 1);
     var user_fix_encount = Boolean(parameters['Encount Effect'] === 'true' || false);
+    var user_fix_deephack = Boolean(parameters['Use Hack'] === 'true' || false);
     
     /*
     Bug fix
@@ -79,8 +92,10 @@ var drowsepost = drowsepost || {};
         addChildした_lowerLayerおよび_upperLayerがremoveされないため
         参照できないゴミオブジェクトがcanvasに増えてゆくのでお掃除
         */
-        if('_lowerLayer' in this) this.removeChild(this._lowerLayer);
-        if('_upperLayer' in this) this.removeChild(this._upperLayer);
+        if(user_fix_deephack){
+            if('_lowerLayer' in this) this.removeChild(this._lowerLayer);
+            if('_upperLayer' in this) this.removeChild(this._upperLayer);
+        }
         _Tilemap_createLayers.call(this);
     };
     
@@ -121,6 +136,7 @@ var drowsepost = drowsepost || {};
             var mapY = Math.floor((originY + y) / tileHeight);
             return this.roundY(mapY);
         };
+        
     }());
     
     /*
@@ -145,6 +161,7 @@ var drowsepost = drowsepost || {};
             if(typeof y !== 'number') y = this._realY;
             return $gameMap.setDisplayPos(x - this.centerX(), y - this.centerY());
         };
+        
     }());
     
     /*
@@ -209,6 +226,12 @@ var drowsepost = drowsepost || {};
         var _Scene_Map_start = Scene_Map.prototype.start;
         Scene_Map.prototype.start = function() {
             _Scene_Map_start.call(this);
+            
+            //移動後処理
+            if(this._transfer) {
+                //マップ設定情報で拡大率変更
+                $gameMap._dp_scale =  Number($dataMap.meta.zoomScale || $gameMap._dp_scale);
+            }
             
             //マップシーン開始時に拡大率変更をフック。
             _pan = $gameMap._dp_pan;
@@ -347,12 +370,12 @@ var drowsepost = drowsepost || {};
         $gamePlayer.center(_target._realX, _target._realY);
     };
     
-    
     /*
     Interface Entry
     ===================================================================================
     */
     drowsepost.camera = camera;
+    
     drowsepost.setZoom = function(ratio, duration, target) {
         if(typeof target !== 'undefined') {
             camera.center(target);
