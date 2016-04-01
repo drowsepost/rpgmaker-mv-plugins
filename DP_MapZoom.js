@@ -1,7 +1,7 @@
 //=============================================================================
 // drowsepost Plugins - Map Zooming Controller
 // DP_MapZoom.js
-// Version: 0.35
+// Version: 0.45
 // canotun
 //=============================================================================
 
@@ -12,7 +12,7 @@ var drowsepost = drowsepost || {};
 
 //=============================================================================
  /*:
- * @plugindesc マップの拡大率を制御します。v0.4(20160310)
+ * @plugindesc マップの拡大率を制御します。v0.45(20160401)
  * @author drowsepost
  *
  * @param Base Scale
@@ -25,26 +25,35 @@ var drowsepost = drowsepost || {};
  * Default: true
  * @default true
  *
+ * @param Camera Controll
+ * @desc 拡大処理中のカメラ制御をこのプラグインが行う(ON: true / OFF: false)
+ * Default: true
+ * @default true
+ *
  * @param Use Hack
- * @desc 画面拡大率変更時に画面にゴミが残る問題への対応(ON: true / OFF: false)
+ * @desc 画面拡大率変更時に画面にゴミが残る問題への対応を行う
  * Default: true
  * @default true
  *
  * @help
+ * ============================================================================
+ * About
+ * ============================================================================
  * 各種座標処理に拡大率の計算を反映し
  * マップシーンの拡大率を制御します。
  * 
- * Base Scaleにはゲーム開始時の拡大倍率を指定します。
- * 倍率には0以上を指定してください。
+ * ============================================================================
+ * Attention
+ * ============================================================================
+ * このプラグインは試作品です。
+ * いくつかのプライベートプロパティーを参照しているため、
+ * 今後の本体アップデートで動作しなくなる可能性があります。
+ * また、各種APIや名称が予告なく変更される場合があります。
+ * ご利用によって生じたいかなる問題の責任も負いかねます。
  * 
- * Encount Effectにはエンカウントエフェクトを置き換えるかどうかを指定します。
- * オリジナルのエフェクトで置き換えている場合はこちらをfalseにしてください。
- * しかしその場合、画面の拡大率をそれぞれ反映できるように調整する必要があります。
- * 現在の画面の拡大率は$gameScreen.zoomScale()で取得できます。
- * これはプラグインの利用に関わらず元から存在する関数です。
- * ご利用のプラグインによってはこの$gameScreen.zoomScale()を座標の考慮に入れていないようですので
- * 調整が必要になることがあります。
- *
+ * ============================================================================
+ * How To Use
+ * ============================================================================
  * マップのメモ欄に対して
  * <zoomScale:0.5>
  * などと記述すると、マップごとに基準になる拡大率を指定することが出来ます。
@@ -60,21 +69,47 @@ var drowsepost = drowsepost || {};
  * を呼ぶと、
  * 指定したイベントを中心にゲーム中で画面の拡大率を変更できます。
  * 
+ * ============================================================================
+ * Settings
+ * ============================================================================
+ * Base Scale
+ * ゲーム開始時の拡大倍率を指定します。
+ * 倍率には0以上を指定してください。
+ * 
+ * Encount Effect
+ * エンカウントエフェクトを置き換えるかどうかを指定します。
+ * オリジナルのエフェクトで置き換えている場合はこちらをfalseにしてください。
+ * しかしその場合、画面の拡大率をそれぞれ反映できるように調整する必要があります。
+ * 
+ * Camera Controll
+ * falseの場合はイベントを指定した拡大を含む拡大中のカメラ制御は動作しません。
+ * 別プラグインでカメラ制御を行う場合にご利用ください。
+ * 
+ * Use Hack
+ * trueの場合マップサイズ変更時に古いオブジェクトが画面に残ってしまうバグを解決します。
+ * 競合する場合はfalseにしてください。
+ * 
+ * ============================================================================
+ * Technical information
+ * ============================================================================
+ * 現在の画面の拡大率は$gameScreen.zoomScale()で取得できます。
+ * これはプラグインの利用に関わらず元から存在する関数です。
+ * 
  * 指定された拡大率設定は$gameMap._dp_scaleが保持します。
  * シーン離脱時のスクロール量は$gameMap._dp_panが保持します。
  * 
  * 他のプラグインで利用する「screenX」や「screenY」がずれる場合は、
  * 「screenX」や「screenY」にそれぞれ$gameScreen.zoomScale()を掛けて下さい。
  * 
- * ===
- * このプラグインは試作品です。
- * いくつかのプライベートプロパティーを参照しているため、
- * 今後の本体アップデートで動作しなくなる可能性があります。
- * ご利用によって生じたいかなる問題の責任も負いかねます。
- * ===
+ * ============================================================================
+ * Changelog
+ * ============================================================================
+ * Version 0.45:
+ *  -動作の高速化
+ *  -Galv's Cam Control ver1.7 に対応。
+ *  -Yanfly Engine Plugins Core Engine ver1.13 に対応。
  * 
- * ライセンス: 一部製品コードを含みます。
- * カドカワさま ツクールシリーズでのみ利用可能です。
+ * ライセンス: MIT
  * 
  */
 (function() {
@@ -83,7 +118,8 @@ var drowsepost = drowsepost || {};
     var user_scale = Number(parameters['Base Scale'] || 1);
     var user_fix_encount = Boolean(parameters['Encount Effect'] === 'true' || false);
     var user_fix_deephack = Boolean(parameters['Use Hack'] === 'true' || false);
-    
+    var user_use_camera = Boolean(parameters['Camera Controll'] === 'true' || false);
+
     /*
     Bug fix
     */
@@ -100,6 +136,30 @@ var drowsepost = drowsepost || {};
         }
         _Tilemap_createLayers.call(this);
     };
+    
+    /*
+    renderSize
+    =============================================================================
+    タイル拡大率を保持および仮想的なレンダリング範囲を算出します。
+    */
+    var renderSize = {
+        _scale : 0,
+        width: 0,
+        height: 0,
+    };
+    
+    Object.defineProperty(renderSize, 'scale', {
+        get: function() {
+            return this._scale;
+        },
+        set: function(val) {
+            if(val != this._scale) {
+                this._scale = Number(val);
+                this.width = Math.ceil(Graphics.boxWidth / this._scale);
+                this.height = Math.ceil(Graphics.boxHeight / this._scale);
+            }
+        }
+    });
     
     /*
     Game Map
@@ -172,14 +232,14 @@ var drowsepost = drowsepost || {};
     描画反映変更機能の追加
     */
     (function(){
-        var tilemap_scale = 1;
+        renderSize.scale = 1;
         
         var _Spriteset_Map_createWeather = Spriteset_Map.prototype.createWeather;
         Spriteset_Map.prototype.createWeather = function() {
             _Spriteset_Map_createWeather.call(this);
             this._weather._rebornSprite = function(sprite) {
-                sprite.ax = Math.randomInt(Math.ceil(Graphics.width / tilemap_scale) + 100) - 50 + this.origin.x;
-                sprite.ay = Math.randomInt(Math.ceil(Graphics.height / tilemap_scale) + 200) - 100 + this.origin.y;
+                sprite.ax = Math.randomInt(renderSize.width + 100) - 50 + this.origin.x;
+                sprite.ay = Math.randomInt(renderSize.height + 200) - 100 + this.origin.y;
                 sprite.opacity = 160 + Math.randomInt(60);
             };
         };
@@ -187,20 +247,24 @@ var drowsepost = drowsepost || {};
         var _Spriteset_Map_updateScreenSprites = Spriteset_Map.prototype.updateScreenSprites;
         Spriteset_Map.prototype.updateScreenSprites = function() {
             _Spriteset_Map_updateScreenSprites.call(this);
+            var _scale = ('YEP_CoreEngine' in Imported)? 10 : 1;
             
             //ScreenSpriteのリサイズ
             this._flashSprite.scale.x = 
             this._fadeSprite.scale.x = 
-            this._weather._dimmerSprite.scale.x = Math.ceil(Graphics.width / tilemap_scale);
+            this._weather._dimmerSprite.scale.x = renderSize.width * _scale;
             
             this._flashSprite.scale.y = 
             this._fadeSprite.scale.y = 
-            this._weather._dimmerSprite.scale.y = Math.ceil(Graphics.height / tilemap_scale);
+            this._weather._dimmerSprite.scale.y = renderSize.height * _scale;
             
         };
         
         Spriteset_Map.prototype._dp_Resize = function(zoom) {
-            tilemap_scale = zoom;
+            /*
+            実体スクリーンサイズを算出
+            */
+            renderSize.scale = zoom;
             
             /*
             拡大率からレンダリングするべきマップのサイズを設定します。
@@ -208,7 +272,7 @@ var drowsepost = drowsepost || {};
             this._tilemap.width = Math.ceil((Graphics.width + this._tilemap._margin) * 2 / zoom);
             this._tilemap.height = Math.ceil((Graphics.height + this._tilemap._margin) * 2 / zoom);
             
-            //スプライトのプロパティーをいじったらrefresh(); *.･(^ω^)＊ 。サッパリ！
+            //スプライトのプロパティーをいじったらrefresh();
             this._tilemap.refresh();
             
             //パララックスサイズ変更
@@ -238,6 +302,10 @@ var drowsepost = drowsepost || {};
             //マップシーン開始時に拡大率変更をフック。
             _pan = $gameMap._dp_pan;
             _setZoom($gameMap._dp_scale);
+            
+            if(this._transfer) {
+                $gamePlayer.center($gamePlayer._realX + _pan.x, $gamePlayer._realY + _pan.y);
+            }
         };
         
         var _Scene_Map_terminate = Scene_Map.prototype.terminate;
@@ -291,7 +359,9 @@ var drowsepost = drowsepost || {};
         if(this._zoomScaleTarget === this._zoomScale) this._zoomDuration = 0;
         
         if(_isanimation) {
-            if (this._zoomDuration > 0) $gamePlayer.center($gamePlayer._realX + _pan.x, $gamePlayer._realY + _pan.y);
+            if (this._zoomDuration > 0) {
+                if(user_use_camera) $gamePlayer.center($gamePlayer._realX + _pan.x, $gamePlayer._realY + _pan.y);
+            }
             if (this._zoomDuration == 0) _animateEnd();
         }
     };
@@ -322,7 +392,7 @@ var drowsepost = drowsepost || {};
         _changeRenderSize(scale);
         $gameScreen._zoomScaleTarget = scale;
         $gameScreen.setZoom(0, 0, scale);
-        $gamePlayer.center($gamePlayer._realX + _pan.x, $gamePlayer._realY + _pan.y);
+        if(user_use_camera) $gamePlayer.center($gamePlayer._realX + _pan.x, $gamePlayer._realY + _pan.y);
     };
     
     var _animateStart = function(scale, duration) {
@@ -365,7 +435,7 @@ var drowsepost = drowsepost || {};
         }
         
         if(!(_target instanceof Game_CharacterBase)) {
-            console.log('drowsepost.camera.center: not support target', event);
+            //console.log('drowsepost.camera.center: not support target', event);
             _target = $gamePlayer;
         }
         
