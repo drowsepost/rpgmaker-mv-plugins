@@ -1,8 +1,8 @@
 //=============================================================================
 // drowsepost Plugins - Map Zooming Controller
 // DP_MapZoom.js
-// Version: 0.45
-// canotun
+// Version: 0.451
+// https://github.com/drowsepost/rpgmaker-mv-plugins
 //=============================================================================
 
 var Imported = Imported || {};
@@ -21,18 +21,18 @@ var drowsepost = drowsepost || {};
  * @default 1
  *
  * @param Encount Effect
- * @desc エンカウントエフェクトに拡大率を反映(ON: true / OFF: false)
- * Default: true
+ * @desc エンカウントエフェクトに拡大率を反映
+ * Default: true (ON: true / OFF: false)
  * @default true
  *
  * @param Camera Controll
- * @desc 拡大処理中のカメラ制御をこのプラグインが行う(ON: true / OFF: false)
- * Default: true
+ * @desc 拡大処理中のカメラ制御をこのプラグインが行う
+ * Default: true (ON: true / OFF: false)
  * @default true
  *
  * @param Use Hack
- * @desc 画面拡大率変更時に画面にゴミが残る問題への対応を行う
- * Default: true
+ * @desc 画面拡大率変更時に画面にゴミが残る問題への対応を行う。
+ * Default: true (ON: true / OFF: false)
  * @default true
  *
  * @help
@@ -87,7 +87,7 @@ var drowsepost = drowsepost || {};
  * 
  * Use Hack
  * trueの場合マップサイズ変更時に古いオブジェクトが画面に残ってしまうバグを解決します。
- * 競合する場合はfalseにしてください。
+ * Tilemap内のBitmapを使いまわす変更をしている場合はfalseにしてください。
  * 
  * ============================================================================
  * Technical information
@@ -104,12 +104,18 @@ var drowsepost = drowsepost || {};
  * ============================================================================
  * Changelog
  * ============================================================================
+ * Version 0.451:
+ *  -Yanfly Engine Plugins Core Engine との親和性向上
+ *  
  * Version 0.45:
  *  -動作の高速化
  *  -Galv's Cam Control ver1.7 に対応。
  *  -Yanfly Engine Plugins Core Engine ver1.13 に対応。
  * 
  * ライセンス: MIT
+ * 
+ * 一部コードを参考にさせていただきました。
+ * http://yanfly.moe/
  * 
  */
 (function() {
@@ -143,9 +149,9 @@ var drowsepost = drowsepost || {};
     タイル拡大率を保持および仮想的なレンダリング範囲を算出します。
     */
     var renderSize = {
-        _scale : 0,
-        width: 0,
-        height: 0,
+        _scale : 1,
+        width: Graphics.boxWidth,
+        height: Graphics.boxHeight,
     };
     
     Object.defineProperty(renderSize, 'scale', {
@@ -227,13 +233,28 @@ var drowsepost = drowsepost || {};
     }());
     
     /*
+    ScreenSprite
+    =============================================================================
+    描画反映変更に伴うスクリーンスプライトのプライオリティー調整(YEP_CoreEngine互換)
+    */
+    var _ScreenSprite_initialize = ScreenSprite.prototype.initialize;
+    ScreenSprite.prototype.initialize = function() {
+        _ScreenSprite_initialize.call(this);
+        if('YEP_CoreEngine' in Imported) return;
+        this.scale.x = Graphics.boxWidth * 10;
+        this.scale.y = Graphics.boxHeight * 10;
+        this.anchor.x = 0.5;
+        this.anchor.y = 0.5;
+        this.x = 0;
+        this.y = 0;
+    };
+    
+    /*
     Spriteset
     =============================================================================
     描画反映変更機能の追加
     */
     (function(){
-        renderSize.scale = 1;
-        
         var _Spriteset_Map_createWeather = Spriteset_Map.prototype.createWeather;
         Spriteset_Map.prototype.createWeather = function() {
             _Spriteset_Map_createWeather.call(this);
@@ -242,22 +263,6 @@ var drowsepost = drowsepost || {};
                 sprite.ay = Math.randomInt(renderSize.height + 200) - 100 + this.origin.y;
                 sprite.opacity = 160 + Math.randomInt(60);
             };
-        };
-        
-        var _Spriteset_Map_updateScreenSprites = Spriteset_Map.prototype.updateScreenSprites;
-        Spriteset_Map.prototype.updateScreenSprites = function() {
-            _Spriteset_Map_updateScreenSprites.call(this);
-            var _scale = ('YEP_CoreEngine' in Imported)? 10 : 1;
-            
-            //ScreenSpriteのリサイズ
-            this._flashSprite.scale.x = 
-            this._fadeSprite.scale.x = 
-            this._weather._dimmerSprite.scale.x = renderSize.width * _scale;
-            
-            this._flashSprite.scale.y = 
-            this._fadeSprite.scale.y = 
-            this._weather._dimmerSprite.scale.y = renderSize.height * _scale;
-            
         };
         
         Spriteset_Map.prototype._dp_Resize = function(zoom) {
@@ -271,8 +276,6 @@ var drowsepost = drowsepost || {};
             */
             this._tilemap.width = Math.ceil((Graphics.width + this._tilemap._margin) * 2 / zoom);
             this._tilemap.height = Math.ceil((Graphics.height + this._tilemap._margin) * 2 / zoom);
-            
-            //スプライトのプロパティーをいじったらrefresh();
             this._tilemap.refresh();
             
             //パララックスサイズ変更
