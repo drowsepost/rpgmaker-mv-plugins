@@ -1,7 +1,7 @@
 //=============================================================================
 // drowsepost Plugins - Map Zooming Controller
 // DP_MapZoom.js
-// Version: 0.451
+// Version: 0.452
 // https://github.com/drowsepost/rpgmaker-mv-plugins
 //=============================================================================
 
@@ -12,7 +12,7 @@ var drowsepost = drowsepost || {};
 
 //=============================================================================
  /*:
- * @plugindesc マップの拡大率を制御します。v0.45(20160401)
+ * @plugindesc マップの拡大率を制御します。v0.452(20160410)
  * @author drowsepost
  *
  * @param Base Scale
@@ -59,15 +59,22 @@ var drowsepost = drowsepost || {};
  * などと記述すると、マップごとに基準になる拡大率を指定することが出来ます。
  * 
  * プラグインコマンドにて
- * mapSetZoom {倍率} {変更にかけるフレーム数} {対象イベントID}
+ * mapSetZoom {倍率} {変更にかけるフレーム数} {対象イベントID / this / player}
  * 
  * もしくは
  * 
  * スクリプトコマンドにて
- * drowsepost.setZoom({倍率}, {変更にかけるフレーム数}, {対象イベント})
+ * drowsepost.setZoom({倍率}, {変更にかけるフレーム数}, {対象イベント / ID})
  * 
  * を呼ぶと、
- * 指定したイベントを中心にゲーム中で画面の拡大率を変更できます。
+ * 指定したイベントの位置を中心にゲーム中で画面の拡大率を変更できます。
+ * 
+ * 例)
+ * プラグインコマンドにおいて対象イベントの部分に
+ * 「this」もしくは「このイベント」と指定すると、
+ * イベント実行中のオブジェクトを指定します。
+ * mapSetZoom 2 360 this
+ * たとえば上記はそのイベントを中心にして6秒かけて2倍の拡大率に変化します。
  * 
  * ============================================================================
  * Settings
@@ -104,6 +111,10 @@ var drowsepost = drowsepost || {};
  * ============================================================================
  * Changelog
  * ============================================================================
+ * Version 0.452:
+ *  -プラグインコマンドの修正
+ *  -プラグインコマンドに明示的に「このイベント」と「プレイヤー」を指定する機能を追加
+ * 
  * Version 0.451:
  *  -Yanfly Engine Plugins Core Engine との親和性向上
  *  
@@ -461,9 +472,19 @@ var drowsepost = drowsepost || {};
     var _Game_Interpreter_pluginCommand = Game_Interpreter.prototype.pluginCommand;
     Game_Interpreter.prototype.pluginCommand = function(command, args) {
         _Game_Interpreter_pluginCommand.call(this, command, args);
-        if (command === 'mapSetZoom') {
-            drowsepost.setZoom(Number(args[0]), Number(args[1]), Number(args[3]));
-        }
+        (function(_s, _c, _a){
+            if (_c !== 'mapSetZoom') return;
+            
+            var _target;
+            if(_a.length > 2) {
+                if((_a[2] === 'this') || (_a[2] === 'このイベント')) _target = _s;
+                else if((_a[2] === 'player') || (_a[2] === 'プレイヤー')) _target = $gamePlayer;
+                else _target = Number(_a[2]);
+            }
+            
+            drowsepost.setZoom(Number(_a[0]), Number(_a[1]), _target);
+        }(this, command, args));
+        
     }
     
 }());
