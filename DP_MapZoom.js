@@ -322,7 +322,7 @@ var drowsepost = drowsepost || {};
             var n = speed - this._encounterEffectDuration;
             var p = n / speed;
             
-            var q = (p * 20 * p + 5) * p + $gameMap._dp_scale;//変更部分。エンカウントエフェクトにオリジナル拡大率反映
+            var q = (p * 20 * p + 5) * p;
             var zoomX = $gamePlayer.screenX();
             var zoomY = $gamePlayer.screenY() - Math.round($gameMap.tileHeight() / 2);//変更部分。タイルサイズ指定反映
             
@@ -331,7 +331,7 @@ var drowsepost = drowsepost || {};
                 this.snapForBattleBackground();
                 this.startFlashForEncounter(speed / 2);
             }
-            $gameScreen.setZoom(zoomX, zoomY, q);
+            $gameScreen.setZoom(zoomX, zoomY, q * $gameMap._dp_scale);
             if (n === Math.floor(speed / 6)) {
                 this.startFlashForEncounter(speed / 2);
             }
