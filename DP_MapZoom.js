@@ -1,7 +1,7 @@
 //=============================================================================
 // drowsepost Plugins - Map Zooming Controller
 // DP_MapZoom.js
-// Version: 0.452
+// Version: 0.453
 // https://github.com/drowsepost/rpgmaker-mv-plugins
 //=============================================================================
 
@@ -12,7 +12,7 @@ var drowsepost = drowsepost || {};
 
 //=============================================================================
  /*:
- * @plugindesc マップの拡大率を制御します。v0.452(20160410)
+ * @plugindesc マップの拡大率を制御します。v0.453(20161230)
  * @author drowsepost
  *
  * @param Base Scale
@@ -111,6 +111,9 @@ var drowsepost = drowsepost || {};
  * ============================================================================
  * Changelog
  * ============================================================================
+ * Version 0.453:
+ *  -マップ移動後に移動前の画面のずれを持ち越してしまう問題の修正
+ * 
  * Version 0.452:
  *  -プラグインコマンドの修正
  *  -プラグインコマンドに明示的に「このイベント」と「プレイヤー」を指定する機能を追加
@@ -303,6 +306,9 @@ var drowsepost = drowsepost || {};
     拡大率の引継ぎ
     */
     (function(){
+        /*
+        マップシーンの開始
+        */
         var _Scene_Map_start = Scene_Map.prototype.start;
         Scene_Map.prototype.start = function() {
             _Scene_Map_start.call(this);
@@ -314,14 +320,14 @@ var drowsepost = drowsepost || {};
             }
             
             //マップシーン開始時に拡大率変更をフック。
-            _pan = $gameMap._dp_pan;
+            //移動後の場合、パンをリセット
+            _pan = this._transfer ? {'x': 0, 'y': 0} : $gameMap._dp_pan;
             _setZoom($gameMap._dp_scale);
-            
-            if(this._transfer) {
-                $gamePlayer.center($gamePlayer._realX + _pan.x, $gamePlayer._realY + _pan.y);
-            }
         };
         
+        /*
+        マップシーンの終了
+        */
         var _Scene_Map_terminate = Scene_Map.prototype.terminate;
         Scene_Map.prototype.terminate = function() {
             //マップシーン終了時に拡大率情報を保存。
@@ -331,6 +337,10 @@ var drowsepost = drowsepost || {};
             _Scene_Map_terminate.call(this);
         };
         
+        /*
+        エンカウントエフェクト
+        TODO: 拡大率に関係なくきれいに拡大させる
+        */
         if(!user_fix_encount) return;
         Scene_Map.prototype.updateEncounterEffect = function() {
             if (this._encounterEffectDuration <= 0) return;
