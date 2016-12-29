@@ -12,7 +12,7 @@ var drowsepost = drowsepost || {};
 
 //=============================================================================
  /*:
- * @plugindesc マップの拡大率を制御します。v0.453(20161230)
+ * @plugindesc マップの拡大率を制御します。v0.454(20161230)
  * @author drowsepost
  *
  * @param Base Scale
@@ -111,6 +111,9 @@ var drowsepost = drowsepost || {};
  * ============================================================================
  * Changelog
  * ============================================================================
+ * Version 0.454:
+ *  -カメラ制御がオフの場合でも、一部画面位置制御が誤動作していた部分を修正
+ * 
  * Version 0.453:
  *  -マップ移動後に移動前の画面のずれを持ち越してしまう問題の修正
  * 
@@ -339,7 +342,7 @@ var drowsepost = drowsepost || {};
         
         /*
         エンカウントエフェクト
-        TODO: 拡大率に関係なくきれいに拡大させる
+        TODO: 拡大率1以外でうまくいかない。拡大率に関係なくきれいに拡大させる
         */
         if(!user_fix_encount) return;
         Scene_Map.prototype.updateEncounterEffect = function() {
@@ -463,7 +466,7 @@ var drowsepost = drowsepost || {};
             _target = $gamePlayer;
         }
         
-        $gamePlayer.center(_target._realX, _target._realY);
+        if(user_use_camera) $gamePlayer.center(_target._realX, _target._realY);
     };
     
     /*
