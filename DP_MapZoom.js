@@ -322,9 +322,8 @@ var drowsepost = drowsepost || {};
         var _Scene_Map_terminate = Scene_Map.prototype.terminate;
         Scene_Map.prototype.terminate = function() {
             //マップシーン終了時に拡大率情報を保存。
-            zoomAnim.end();
-            _setZoom($gameMap._dp_scale);
             $gameMap._dp_pan = _getPan();
+            zoomAnim.end();
             
             _Scene_Map_terminate.call(this);
         };
