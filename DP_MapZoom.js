@@ -1,7 +1,7 @@
 //=============================================================================
 // drowsepost Plugins - Map Zooming Controller
 // DP_MapZoom.js
-// Version: 0.453
+// Version: 0.5
 // https://github.com/drowsepost/rpgmaker-mv-plugins
 //=============================================================================
 
@@ -12,7 +12,7 @@ var drowsepost = drowsepost || {};
 
 //=============================================================================
  /*:
- * @plugindesc マップの拡大率を制御します。v0.454(20161230)
+ * @plugindesc マップの拡大率を制御します。
  * @author drowsepost
  *
  * @param Base Scale
@@ -27,6 +27,11 @@ var drowsepost = drowsepost || {};
  *
  * @param Camera Controll
  * @desc 拡大処理中のカメラ制御をこのプラグインが行う
+ * Default: true (ON: true / OFF: false)
+ * @default true
+ *
+ * @param Weather Patch
+ * @desc 天候スプライトの生成範囲を広げる修正を適用します。
  * Default: true (ON: true / OFF: false)
  * @default true
  *
@@ -92,6 +97,11 @@ var drowsepost = drowsepost || {};
  * falseの場合はイベントを指定した拡大を含む拡大中のカメラ制御は動作しません。
  * 別プラグインでカメラ制御を行う場合にご利用ください。
  * 
+ * Weather Patch
+ * trueの場合、天候スプライトの生成範囲に関する修正を行い、
+ * 拡大率変更後も天候スプライトをまんべんなく分布させます
+ * 別プラグインで天候演出の制御を行っている場合等はfalseにしてください。
+ * 
  * Use Hack
  * trueの場合マップサイズ変更時に古いオブジェクトが画面に残ってしまうバグを解決します。
  * Tilemap内のBitmapを使いまわす変更をしている場合はfalseにしてください。
@@ -111,23 +121,7 @@ var drowsepost = drowsepost || {};
  * ============================================================================
  * Changelog
  * ============================================================================
- * Version 0.454:
- *  -カメラ制御がオフの場合でも、一部画面位置制御が誤動作していた部分を修正
- * 
- * Version 0.453:
- *  -マップ移動後に移動前の画面のずれを持ち越してしまう問題の修正
- * 
- * Version 0.452:
- *  -プラグインコマンドの修正
- *  -プラグインコマンドに明示的に「このイベント」と「プレイヤー」を指定する機能を追加
- * 
- * Version 0.451:
- *  -Yanfly Engine Plugins Core Engine との親和性向上
- *  
- * Version 0.45:
- *  -動作の高速化
- *  -Galv's Cam Control ver1.7 に対応。
- *  -Yanfly Engine Plugins Core Engine ver1.13 に対応。
+ * Git logに移動
  * 
  * ライセンス: MIT
  * 
@@ -142,23 +136,23 @@ var drowsepost = drowsepost || {};
     var user_fix_encount = Boolean(parameters['Encount Effect'] === 'true' || false);
     var user_fix_deephack = Boolean(parameters['Use Hack'] === 'true' || false);
     var user_use_camera = Boolean(parameters['Camera Controll'] === 'true' || false);
+    var user_fix_weather = Boolean(parameters['Weather Patch'] === 'true' || false);
 
     /*
     Bug fix
+    TilemapのwidthやtileWidthを変更するたびにセッターにより_createLayersが呼ばれるが
+    addChildした_lowerLayerおよび_upperLayerがremoveされないため
+    参照できないゴミオブジェクトがcanvasに増えてゆくのでお掃除
     */
-    var _Tilemap_createLayers = Tilemap.prototype._createLayers;
-    Tilemap.prototype._createLayers = function() {
-        /*
-        TilemapのwidthやtileWidthを変更するたびにセッターにより_createLayersが呼ばれるが
-        addChildした_lowerLayerおよび_upperLayerがremoveされないため
-        参照できないゴミオブジェクトがcanvasに増えてゆくのでお掃除
-        */
-        if(user_fix_deephack){
+    (function(){
+        if(!user_fix_deephack) return;
+        var _Tilemap_createLayers = Tilemap.prototype._createLayers;
+        Tilemap.prototype._createLayers = function() {
             if('_lowerLayer' in this) this.removeChild(this._lowerLayer);
             if('_upperLayer' in this) this.removeChild(this._upperLayer);
-        }
-        _Tilemap_createLayers.call(this);
-    };
+            _Tilemap_createLayers.call(this);
+        };
+    }());
     
     /*
     renderSize
@@ -187,7 +181,6 @@ var drowsepost = drowsepost || {};
     /*
     Game Map
     =============================================================================
-    @use $gameScreen.zoomScale();
     拡大率の反映
     */
     (function(){
@@ -201,11 +194,11 @@ var drowsepost = drowsepost || {};
         };
         
         Game_Map.prototype.screenTileX = function() {
-            return Graphics.width / (this.tileWidth() * this._dp_scale);
+            return Graphics.width / (this.tileWidth() * $gameScreen.zoomScale());
         };
         
         Game_Map.prototype.screenTileY = function() {
-            return Graphics.height / (this.tileHeight() * this._dp_scale);
+            return Graphics.height / (this.tileHeight() * $gameScreen.zoomScale());
         };
         
         Game_Map.prototype.canvasToMapX = function(x) {
@@ -227,24 +220,15 @@ var drowsepost = drowsepost || {};
     /*
     Game Player
     =============================================================================
-    @use $gameScreen.zoomScale();
-    @use $gameMap.setDisplayPos();
     拡大率の反映
     */
     (function(){
-        
         Game_Player.prototype.centerX = function() {
             return (Graphics.width / ($gameMap.tileWidth() * $gameScreen.zoomScale()) - 1) / 2.0;
         };
         
         Game_Player.prototype.centerY = function() {
             return (Graphics.height / ($gameMap.tileHeight() * $gameScreen.zoomScale()) - 1) / 2.0;
-        };
-        
-        Game_Player.prototype.center = function(x, y) {
-            if(typeof x !== 'number') x = this._realX;
-            if(typeof y !== 'number') y = this._realY;
-            return $gameMap.setDisplayPos(x - this.centerX(), y - this.centerY());
         };
         
     }());
@@ -254,18 +238,20 @@ var drowsepost = drowsepost || {};
     =============================================================================
     描画反映変更に伴うスクリーンスプライトのプライオリティー調整(YEP_CoreEngine互換)
     */
-    var _ScreenSprite_initialize = ScreenSprite.prototype.initialize;
-    ScreenSprite.prototype.initialize = function() {
-        _ScreenSprite_initialize.call(this);
-        if('YEP_CoreEngine' in Imported) return;
-        if (Utils.RPGMAKER_VERSION && Utils.RPGMAKER_VERSION >= '1.3.0') return;
-        this.scale.x = Graphics.boxWidth * 10;
-        this.scale.y = Graphics.boxHeight * 10;
-        this.anchor.x = 0.5;
-        this.anchor.y = 0.5;
-        this.x = 0;
-        this.y = 0;
-    };
+    (function(){
+        var _ScreenSprite_initialize = ScreenSprite.prototype.initialize;
+        ScreenSprite.prototype.initialize = function() {
+            _ScreenSprite_initialize.call(this);
+            if('YEP_CoreEngine' in Imported) return;
+            if(Utils.RPGMAKER_VERSION && Utils.RPGMAKER_VERSION >= '1.3.0') return;
+            this.scale.x = Graphics.boxWidth * 10;
+            this.scale.y = Graphics.boxHeight * 10;
+            this.anchor.x = 0.5;
+            this.anchor.y = 0.5;
+            this.x = 0;
+            this.y = 0;
+        };
+    }());
     
     /*
     Spriteset
@@ -273,16 +259,7 @@ var drowsepost = drowsepost || {};
     描画反映変更機能の追加
     */
     (function(){
-        var _Spriteset_Map_createWeather = Spriteset_Map.prototype.createWeather;
-        Spriteset_Map.prototype.createWeather = function() {
-            _Spriteset_Map_createWeather.call(this);
-            this._weather._rebornSprite = function(sprite) {
-                sprite.ax = Math.randomInt(renderSize.width + 100) - 50 + this.origin.x;
-                sprite.ay = Math.randomInt(renderSize.height + 200) - 100 + this.origin.y;
-                sprite.opacity = 160 + Math.randomInt(60);
-            };
-        };
-        
+        //マップのレンダリング範囲を変更する拡張命令を追加します
         Spriteset_Map.prototype._dp_Resize = function(zoom) {
             /*
             実体スクリーンサイズを算出
@@ -299,14 +276,24 @@ var drowsepost = drowsepost || {};
             //パララックスサイズ変更
             this._parallax.move(0, 0, Math.round(Graphics.width / zoom), Math.round(Graphics.height / zoom));
         };
+        
+        //天候スプライトの生成範囲をGraphic基準ではなく実際の描画範囲に合わせる
+        if(!user_fix_weather) return;
+        var _Spriteset_Map_createWeather = Spriteset_Map.prototype.createWeather;
+        Spriteset_Map.prototype.createWeather = function() {
+            _Spriteset_Map_createWeather.call(this);
+            this._weather._rebornSprite = function(sprite) {
+                sprite.ax = Math.randomInt(renderSize.width + 100) - 50 + this.origin.x;
+                sprite.ay = Math.randomInt(renderSize.height + 200) - 100 + this.origin.y;
+                sprite.opacity = 160 + Math.randomInt(60);
+            };
+        };
+        
     }());
     
     /*
     Scene_Map
     =============================================================================
-    @use $gameMap._dp_scale;
-    @use $gameMap._dp_pan;
-    @use _setZoom();
     拡大率の引継ぎ
     */
     (function(){
@@ -320,12 +307,12 @@ var drowsepost = drowsepost || {};
             //移動後処理
             if(this._transfer) {
                 //マップ設定情報で拡大率変更
-                $gameMap._dp_scale =  Number($dataMap.meta.zoomScale || $gameMap._dp_scale);
+                $gameMap._dp_scale = Number($dataMap.meta.zoomScale || $gameMap._dp_scale);
             }
             
             //マップシーン開始時に拡大率変更をフック。
             //移動後の場合、パンをリセット
-            _pan = this._transfer ? {'x': 0, 'y': 0} : $gameMap._dp_pan;
+            $gameMap._dp_pan = this._transfer ? {'x': 0, 'y': 0} : $gameMap._dp_pan;
             _setZoom($gameMap._dp_scale);
         };
         
@@ -335,7 +322,8 @@ var drowsepost = drowsepost || {};
         var _Scene_Map_terminate = Scene_Map.prototype.terminate;
         Scene_Map.prototype.terminate = function() {
             //マップシーン終了時に拡大率情報を保存。
-            _animateEnd();
+            zoomAnim.end();
+            _setZoom($gameMap._dp_scale);
             $gameMap._dp_pan = _getPan();
             
             _Scene_Map_terminate.call(this);
@@ -343,7 +331,6 @@ var drowsepost = drowsepost || {};
         
         /*
         エンカウントエフェクト
-        TODO: 拡大率1以外でうまくいかない。拡大率に関係なくきれいに拡大させる
         */
         if(!user_fix_encount) return;
         Scene_Map.prototype.updateEncounterEffect = function() {
@@ -373,41 +360,38 @@ var drowsepost = drowsepost || {};
             }
             
         };
+        //エンカウントエフェクトここまで
+        
     }());
     
     /*
     Game_Screen
     =============================================================================
-    @use $gamePlayer.center();
-    @use_animateEnd();
+    拡大アニメーション処理のフック
     */
-    var _Game_Screen_update = Game_Screen.prototype.update;
-    Game_Screen.prototype.update = function() {
-        _Game_Screen_update.call(this);
-        if(this._zoomScaleTarget === this._zoomScale) this._zoomDuration = 0;
-        
-        if(_isanimation) {
-            if (this._zoomDuration > 0) {
-                if(user_use_camera) $gamePlayer.center($gamePlayer._realX + _pan.x, $gamePlayer._realY + _pan.y);
-            }
-            if (this._zoomDuration == 0) _animateEnd();
-        }
-    };
+    (function(){
+        var _Game_Screen_update = Game_Screen.prototype.update;
+        Game_Screen.prototype.update = function() {
+            _Game_Screen_update.call(this);
+            zoomAnim.update();
+        };
+    }());
     
     /*
     Main Functions
     =============================================================================
     実際の拡大処理
     */
-    var _isanimation = false;
-    var _pan = {};
-    
     var _getPan = function() {
         var centerPosX = (($gameMap.screenTileX() - 1) / 2);
         var centerPosY = (($gameMap.screenTileY() - 1) / 2);
+        
+        var pan_x = ($gameMap.displayX() + centerPosX) - $gamePlayer._realX;
+        var pan_y = ($gameMap.displayY() + centerPosY) - $gamePlayer._realY;
+        
         return {
-            'x': ($gameMap.displayX()+ centerPosX) - $gamePlayer._realX,
-            'y': ($gameMap.displayY() + centerPosY) - $gamePlayer._realY,
+            'x': ($gameMap.screenTileX() >= $dataMap.width )? 0 : pan_x,
+            'y': ($gameMap.screenTileY() >= $dataMap.height )? 0 : pan_y,
         };
     };
     
@@ -418,41 +402,72 @@ var drowsepost = drowsepost || {};
     
     var _setZoom = function(scale) {
         _changeRenderSize(scale);
-        $gameScreen._zoomScaleTarget = scale;
-        $gameScreen.setZoom(0, 0, scale);
-        if(user_use_camera) $gamePlayer.center($gamePlayer._realX + _pan.x, $gamePlayer._realY + _pan.y);
-    };
-    
-    var _animateStart = function(scale, duration) {
-        if($gameMap._dp_scale > scale) _changeRenderSize(scale);
+        $gameMap._dp_scale = scale;
         
-        _isanimation = true;
-        $gameScreen.startZoom(0, 0, scale, duration);
+        $gameScreen.setZoom(0, 0, scale);
+        camera.center();
     };
     
-    var _animateEnd = function() {
-        if(!_isanimation) return;
-        _isanimation = false;
-        _setZoom($gameMap._dp_scale);
-    };
+    var zoomAnim = (function(){
+        var _active = false;
+        var _duration = 0;
+        var _target = 1;
+        var r = {
+            start : (function(scale, duration) {
+                var is_zoomout = ($gameMap._dp_scale > scale)? true : false;
+                
+                if(is_zoomout) {
+                    _changeRenderSize(scale);
+                    camera.center();
+                } else {
+                    $gameMap._dp_scale = scale;
+                }
+                
+                _duration = duration;
+                _target = scale;
+                _active = true;
+            }),
+            update: (function() {
+                if(!_active) return;
+                if(_duration < 1) {
+                    r.end();
+                    return;
+                }
+                
+                var d = _duration;
+                var t = _target;
+                
+                $gameScreen.setZoom(0, 0, (($gameScreen._zoomScale * (d - 1) + t) / d));
+                camera.center();
+                
+                _duration--;
+            }),
+            end : (function() {
+                if(!_active) return;
+                _active = false;
+                _duration = 0;
+                _setZoom(_target);
+            })
+        };
+        
+        return r;
+    }());
     
     var camera = {};
     camera.zoom = function(ratio, duration) {
         if(typeof ratio !== 'number') return;
-        if(_isanimation) _animateEnd();
+        zoomAnim.end();
         
-        _pan = _getPan($gameMap._dp_scale);
+        $gameMap._dp_pan = _getPan($gameMap._dp_scale);
         
         if(duration > 0){
-            _animateStart(ratio, duration);
+            zoomAnim.start(ratio, duration);
         } else {
             _setZoom(ratio);
         }
-        
-        $gameMap._dp_scale = ratio;
     };
     
-    camera.center = function(event) {
+    camera.target = function(event) {
         var _target;
         if(typeof event === 'object') {
             if('_eventId' in event) _target = $gameMap.event(event._eventId);
@@ -463,11 +478,16 @@ var drowsepost = drowsepost || {};
         }
         
         if(!(_target instanceof Game_CharacterBase)) {
-            //console.log('drowsepost.camera.center: not support target', event);
+            //console.log('drowsepost.camera.target: not support target', event);
             _target = $gamePlayer;
         }
         
         if(user_use_camera) $gamePlayer.center(_target._realX, _target._realY);
+    };
+    
+    camera.center = function() {
+        if(!user_use_camera) return;
+        $gamePlayer.center($gamePlayer._realX + $gameMap._dp_pan.x, $gamePlayer._realY + $gameMap._dp_pan.y);
     };
     
     /*
@@ -478,7 +498,7 @@ var drowsepost = drowsepost || {};
     
     drowsepost.setZoom = function(ratio, duration, target) {
         if(typeof target !== 'undefined') {
-            camera.center(target);
+            camera.target(target);
         }
         camera.zoom(ratio, duration);
     };
