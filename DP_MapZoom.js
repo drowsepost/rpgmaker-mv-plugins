@@ -1,8 +1,8 @@
 //=============================================================================
 // drowsepost Plugins - Map Zooming Controller
 // DP_MapZoom.js
-// Version: 0.510
-// https://github.com/drowsepost/rpgmaker-mv-plugins
+// Version: 0.511
+// https://github.com/drowsepost/rpgmaker-mv-plugins/blob/master/DP_MapZoom.js
 //=============================================================================
 
 var Imported = Imported || {};
@@ -11,7 +11,80 @@ Imported.DP_MapZoom = true;
 var drowsepost = drowsepost || {};
 
 //=============================================================================
- /*:
+/*:
+ * @plugindesc Control the magnification of the map scene.
+ * @author drowsepost
+ *
+ * @param Base Scale
+ * @desc Set the basic magnification ratio.(Start up)
+ * Default: 1 (0 or more)
+ * @default 1
+ *
+ * @param Encount Effect
+ * @desc Corrected code of encounter effect
+ * Default: true (ON: true / OFF: false)
+ * @default true
+ *
+ * @param Camera Controll
+ * @desc camera control during magnification processing
+ * Default: true (ON: true / OFF: false)
+ * @default true
+ *
+ * @param Weather Patch
+ * @desc Change weather sprite generation range
+ * Default: true (ON: true / OFF: false)
+ * @default true
+ *
+ * @param Use Hack
+ * @desc Fix problem on the RPG Maker MV native code
+ * Default: true (ON: true / OFF: false)
+ * @default true
+ *
+ * @help
+ * ============================================================================
+ * About
+ * ============================================================================
+ * It controls the enlargement ratio of the map scene by
+ * reflecting the calculation of the enlargement ratio
+ * to various coordinate processing.
+ * (sorry... english support is immature. by drowsepost)
+ * 
+ * ============================================================================
+ * How To Use
+ * ============================================================================
+ * plugin command: 
+ * mapSetZoom {zoom ratio} {animate frames} {event id or "this" or "player"}
+ * 
+ * e.g.:
+ * mapSetZoom 0.8 360 this
+ * -> zoom out to 0.8x , animate 360 frames, centering to event of called
+ * 
+ * mapSetZoom 1
+ * -> zoom to 1x(reset), Immediate
+ * 
+ * mapSetZoom 3 60 1
+ * -> zoom to 3x , animate 60 frames, centering to Event id:001
+ * 
+ * if you need setting to Default Magnification on the map,
+ * fill in the following in the "Note" field
+ * <zoomScale:{zoom ratio}>
+ * 
+ * e.g.:
+ * <zoomScale:0.5>
+ * -> zoom out to 0.5x , Immediate
+ * 
+ * ============================================================================
+ * Technical information
+ * ============================================================================
+ * If "screenX" or "screenY" used by another plugin is misaligned,
+ * multiply "screenX" or "screenY" by "$gameScreen.zoomScale()".
+ * 
+ * This plugin controls "$gameScreen"
+ * 
+ * license: MIT
+ * 
+ */
+ /*:ja
  * @plugindesc マップの拡大率を制御します。
  * @author drowsepost
  *
@@ -48,15 +121,6 @@ var drowsepost = drowsepost || {};
  * マップシーンの拡大率を制御します。
  * 
  * ============================================================================
- * Attention
- * ============================================================================
- * このプラグインは試作品です。
- * いくつかのプライベートプロパティーを参照しているため、
- * 今後の本体アップデートで動作しなくなる可能性があります。
- * また、各種APIや名称が予告なく変更される場合があります。
- * ご利用によって生じたいかなる問題の責任も負いかねます。
- * 
- * ============================================================================
  * How To Use
  * ============================================================================
  * マップのメモ欄に対して
@@ -65,11 +129,6 @@ var drowsepost = drowsepost || {};
  * 
  * プラグインコマンドにて
  * mapSetZoom {倍率} {変更にかけるフレーム数} {対象イベントID / this / player}
- * 
- * もしくは
- * 
- * スクリプトコマンドにて
- * drowsepost.setZoom({倍率}, {変更にかけるフレーム数}, {対象イベント / ID})
  * 
  * を呼ぶと、
  * 指定したイベントの位置を中心にゲーム中で画面の拡大率を変更できます。
@@ -111,17 +170,15 @@ var drowsepost = drowsepost || {};
  * ============================================================================
  * 現在の画面の拡大率は$gameScreen.zoomScale()で取得できます。
  * これはプラグインの利用に関わらず元から存在する関数です。
+ * 他のプラグインで利用する「screenX」や「screenY」がずれる場合は、
+ * 「screenX」や「screenY」にそれぞれ$gameScreen.zoomScale()を掛けて下さい。
+ * 
+ * このプラグインは$gameScreenを制御します。
  * 
  * 指定された拡大率設定は$gameMap._dp_scaleが保持します。
  * シーン離脱時のスクロール量は$gameMap._dp_panが保持します。
  * 
- * 他のプラグインで利用する「screenX」や「screenY」がずれる場合は、
- * 「screenX」や「screenY」にそれぞれ$gameScreen.zoomScale()を掛けて下さい。
- * 
  * ライセンス: MIT
- * 
- * 一部コードを参考にさせていただきました。
- * http://yanfly.moe/
  * 
  */
 (function() {
@@ -239,8 +296,8 @@ var drowsepost = drowsepost || {};
             _ScreenSprite_initialize.call(this);
             if('YEP_CoreEngine' in Imported) return;
             if(Utils.RPGMAKER_VERSION && Utils.RPGMAKER_VERSION >= '1.3.0') return;
-            this.scale.x = renderSize.width * 10;
-            this.scale.y = renderSize.height * 10;
+            this.scale.x = Graphics.boxWidth * 10;
+            this.scale.y = Graphics.boxHeight * 10;
             this.anchor.x = 0.5;
             this.anchor.y = 0.5;
             this.x = 0;
