@@ -1,7 +1,7 @@
 //=============================================================================
 // drowsepost Plugins - Map Zooming Controller
 // DP_MapZoom.js
-// Version: 0.5
+// Version: 0.502
 // https://github.com/drowsepost/rpgmaker-mv-plugins
 //=============================================================================
 
@@ -117,11 +117,6 @@ var drowsepost = drowsepost || {};
  * 
  * 他のプラグインで利用する「screenX」や「screenY」がずれる場合は、
  * 「screenX」や「screenY」にそれぞれ$gameScreen.zoomScale()を掛けて下さい。
- * 
- * ============================================================================
- * Changelog
- * ============================================================================
- * Git logに移動
  * 
  * ライセンス: MIT
  * 
@@ -322,30 +317,39 @@ var drowsepost = drowsepost || {};
         var _Scene_Map_terminate = Scene_Map.prototype.terminate;
         Scene_Map.prototype.terminate = function() {
             //マップシーン終了時に拡大率情報を保存。
-            $gameMap._dp_pan = _getPan();
             zoomAnim.end();
+            $gameScreen.setZoom(0, 0, $gameMap._dp_scale);
+            $gameMap._dp_pan = _getPan();
             
             _Scene_Map_terminate.call(this);
         };
         
         /*
         エンカウントエフェクト
+        置き換える場合は画面位置の変更前に $gameMap._dp_pan = _getPan($gameMap._dp_scale); を呼んでください
         */
         if(!user_fix_encount) return;
+        var encount_effect_started = false;
         Scene_Map.prototype.updateEncounterEffect = function() {
             if (this._encounterEffectDuration <= 0) return;
+            
+            //パン状態を保存
+            if (!encount_effect_started) {
+                $gameMap._dp_pan = _getPan($gameMap._dp_scale);
+                encount_effect_started = true;
+            }
             
             this._encounterEffectDuration--;
             var speed = this.encounterEffectSpeed();
             var n = speed - this._encounterEffectDuration;
             var p = n / speed;
             
-            var q = (p * 20 * p + 5) * p + $gameMap._dp_scale;//変更部分。エンカウントエフェクトにオリジナル拡大率反映
+            var q = Math.max( ((p * 20 * p + 5) * p + $gameMap._dp_scale), $gameMap._dp_scale );//変更部分。エンカウントエフェクトにオリジナル拡大率反映
             var zoomX = $gamePlayer.screenX();
-            var zoomY = $gamePlayer.screenY() - Math.round($gameMap.tileHeight() / 2);//変更部分。タイルサイズ指定反映
+            var zoomY = $gamePlayer.screenY() - 12;
             
             if (n === 2) {
-                $gameScreen.setZoom(zoomX, zoomY, $gameMap._dp_scale);
+                $gameScreen.setZoom(0, 0, $gameMap._dp_scale);//変更部分。オリジナル拡大率反映
                 this.snapForBattleBackground();
                 this.startFlashForEncounter(speed / 2);
             }
