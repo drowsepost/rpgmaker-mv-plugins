@@ -212,9 +212,9 @@ var drowsepost = drowsepost || {};
     タイル拡大率を保持および仮想的なレンダリング範囲を算出します。
     */
     var renderSize = {
-        _scale : 1,
-        width: Graphics.boxWidth,
-        height: Graphics.boxHeight,
+        _scale : undefined,
+        width: undefined,
+        height: undefined,
     };
     
     Object.defineProperty(renderSize, 'scale', {
@@ -306,21 +306,19 @@ var drowsepost = drowsepost || {};
     }());
     
     /*
-    Spriteset
+    Weather
     =============================================================================
     描画反映変更機能の追加
     */
     (function(){
         //天候スプライトの生成範囲をGraphic基準ではなく実際の描画範囲に合わせる
         if(!user_fix_weather) return;
-        var _Spriteset_Map_createWeather = Spriteset_Map.prototype.createWeather;
-        Spriteset_Map.prototype.createWeather = function() {
-            _Spriteset_Map_createWeather.call(this);
-            this._weather._rebornSprite = function(sprite) {
-                sprite.ax = Math.randomInt(renderSize.width + 100) - 50 + this.origin.x;
-                sprite.ay = Math.randomInt(renderSize.height + 200) - 100 + this.origin.y;
-                sprite.opacity = 160 + Math.randomInt(60);
-            };
+        var _Weather_rebornSprite = Weather.prototype._rebornSprite;
+        Weather.prototype._rebornSprite = function(sprite) {
+            _Weather_rebornSprite.call(this, sprite);
+            sprite.ax = Math.randomInt(renderSize.width + 100) - 50 + this.origin.x;
+            sprite.ay = Math.randomInt(renderSize.height + 200) - 100 + this.origin.y;
+            sprite.opacity = 160 + Math.randomInt(60);
         };
         
     }());
