@@ -1,7 +1,7 @@
 //=============================================================================
 // drowsepost Plugins - Map Zooming Controller
 // DP_MapZoom.js
-// Version: 0.511
+// Version: 0.6
 // https://github.com/drowsepost/rpgmaker-mv-plugins/blob/master/DP_MapZoom.js
 //=============================================================================
 
@@ -34,6 +34,11 @@ var drowsepost = drowsepost || {};
  * @desc Change weather sprite generation range
  * Default: true (ON: true / OFF: false)
  * @default true
+ * 
+ * @param Picture Size Fixation
+ * @desc Exclude pictures from map zooming process
+ * Default: false (ON: true / OFF: false)
+ * @default false
  *
  * @param Use Hack
  * @desc Fix problem on the RPG Maker MV native code
@@ -107,6 +112,11 @@ var drowsepost = drowsepost || {};
  * @desc 天候スプライトの生成範囲を広げる修正を適用します。
  * Default: true (ON: true / OFF: false)
  * @default true
+ * 
+ * @param Picture Size Fixation
+ * @desc ピクチャをマップの拡大処理から除外します
+ * Default: false (ON: true / OFF: false)
+ * @default false
  *
  * @param Use Hack
  * @desc 画面拡大率変更時に画面にゴミが残る問題への対応を行う。
@@ -165,6 +175,9 @@ var drowsepost = drowsepost || {};
  * trueの場合マップサイズ変更時に古いオブジェクトが画面に残ってしまうバグを解決します。
  * Tilemap内のBitmapを使いまわす変更をしている場合はfalseにしてください。
  * 
+ * Picture Size Fixation
+ * trueの場合、ピクチャを拡大処理から除外します。
+ * 
  * ============================================================================
  * Technical information
  * ============================================================================
@@ -189,6 +202,7 @@ var drowsepost = drowsepost || {};
     var user_fix_deephack = Boolean(parameters['Use Hack'] === 'true' || false);
     var user_use_camera = Boolean(parameters['Camera Controll'] === 'true' || false);
     var user_fix_weather = Boolean(parameters['Weather Patch'] === 'true' || false);
+    var user_fix_picture = Boolean(parameters['Picture Size Fixation'] === 'true' || false);
 
     /*
     Bug fix
@@ -321,6 +335,32 @@ var drowsepost = drowsepost || {};
             sprite.opacity = 160 + Math.randomInt(60);
         };
         
+    }());
+    
+    
+    /*
+    Sprite_Picture
+    =============================================================================
+    ピクチャdot by dot配置機能の追加
+    */
+    (function(){
+        //ピクチャの配置と拡大率を、スクリーンの拡大率で打ち消す
+        if(!user_fix_picture) return;
+        var _updateScale = Sprite_Picture.prototype.updateScale;
+        Sprite_Picture.prototype.updateScale = function() {
+            _updateScale.call(this);
+            var picture = this.picture();
+            this.scale.x = (1 / $gameScreen.zoomScale()) * (picture.scaleX() / 100);
+            this.scale.y = (1 / $gameScreen.zoomScale()) * (picture.scaleY() / 100);
+        };
+
+        var _updatePosition = Sprite_Picture.prototype.updatePosition;
+        Sprite_Picture.prototype.updatePosition = function() {
+            _updatePosition.call(this);
+            var picture = this.picture();
+            this.x = Math.floor(picture.x() * (1 / $gameScreen.zoomScale()));
+            this.y = Math.floor(picture.y() * (1 / $gameScreen.zoomScale()));
+        };
     }());
     
     /*
