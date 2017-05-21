@@ -490,7 +490,12 @@ var drowsepost = drowsepost || {};
         
         //パララックスサイズ変更
         spriteset._parallax.move(0, 0, Math.round(Graphics.width / scale), Math.round(Graphics.height / scale));
-        
+
+        // Foreground.js対応
+        if (spriteset._foreground && spriteset._foreground instanceof TilingSprite) {
+            spriteset._foreground.move(0, 0, Math.round(Graphics.width / scale), Math.round(Graphics.height / scale));
+        }
+
         /*
         実体スクリーンサイズを算出
         */
