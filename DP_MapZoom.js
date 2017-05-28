@@ -379,7 +379,10 @@ var drowsepost = drowsepost || {};
             //移動後処理
             if(this._transfer) {
                 //マップ設定情報で拡大率変更
-                $gameMap._dp_scale = Number($dataMap.meta.zoomScale || $gameMap._dp_scale);
+                //イベントエディタからのテスト実行では$gameMap.metaが定義されない。
+                $gameMap._dp_scale = ('meta' in $dataMap)
+                    ? Number($dataMap.meta.zoomScale || $gameMap._dp_scale)
+                    : $gameMap._dp_scale;
             }
             
             //マップシーン開始時に拡大率変更をフック。
