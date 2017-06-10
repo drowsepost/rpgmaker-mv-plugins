@@ -261,7 +261,7 @@ var drowsepost = drowsepost || {};
             
             //保存用変数エントリー
             this._dp_scale = user_scale;
-            this._dp_pan = {'x': 0, 'y': 0};
+            this._dp_pan = new PIXI.Point();
         };
         
         Game_Map.prototype.screenTileX = function() {
@@ -408,7 +408,7 @@ var drowsepost = drowsepost || {};
             
             //マップシーン開始時に拡大率変更をフック。
             //移動後の場合、パンをリセット
-            $gameMap._dp_pan = this._transfer ? {'x': 0, 'y': 0} : $gameMap._dp_pan;
+            $gameMap._dp_pan = this._transfer ? new PIXI.Point() : $gameMap._dp_pan;
             dp_setZoom($gameMap._dp_scale);
             
             //画面中心を強制設定する
@@ -421,7 +421,7 @@ var drowsepost = drowsepost || {};
         var _Scene_Map_terminate = Scene_Map.prototype.terminate;
         Scene_Map.prototype.terminate = function() {
             //マップシーン終了時に拡大率情報を保存。
-            zoomAnim.end();
+            camera.animation.end();
             $gameScreen.setZoom(0, 0, renderSize.scale);
             $gameMap._dp_pan = dp_getpan();
             
@@ -439,7 +439,7 @@ var drowsepost = drowsepost || {};
             
             //パン状態を保存
             if (!encount_effect_started) {
-                zoomAnim.end();
+                camera.animation.end();
                 $gameMap._dp_pan = dp_getpan();
                 encount_effect_started = true;
             }
@@ -481,7 +481,7 @@ var drowsepost = drowsepost || {};
         var _Game_Screen_update = Game_Screen.prototype.update;
         Game_Screen.prototype.update = function() {
             _Game_Screen_update.call(this);
-            zoomAnim.update();
+            camera.animation.update();
         };
     }());
     
@@ -498,10 +498,10 @@ var drowsepost = drowsepost || {};
         var pan_x = ($gameMap.displayX() + centerPosX) - $gamePlayer._realX;
         var pan_y = ($gameMap.displayY() + centerPosY) - $gamePlayer._realY;
         
-        return {
-            'x': ($gameMap.screenTileX() >= $dataMap.width )? 0 : pan_x,
-            'y': ($gameMap.screenTileY() >= $dataMap.height )? 0 : pan_y,
-        };
+        return new PIXI.Point(
+            ($gameMap.screenTileX() >= $dataMap.width )? 0 : pan_x,
+            ($gameMap.screenTileY() >= $dataMap.height )? 0 : pan_y
+        );
     };
     
     var dp_changeRenderSize = function(scale) {
@@ -538,26 +538,24 @@ var drowsepost = drowsepost || {};
         camera.center();
     };
     
-    var zoomAnim = (function(){
+    camera.animation = (function(){
         var _active = false;
-        var _duration = 0;
-        var _target = 1;
-        var _target_pan = {
-            'x': 0,
-            'y': 0,
-        };
+        
+        var _duration, _target, _pan_target, _pan_prev;
+        
         var r = {
             start : (function(scale, pos, duration) {
-                var is_zoomout = ($gameMap._dp_scale > scale)? true : false;
+                var is_zoomout = ($gameScreen.zoomScale() > scale)? true : false;
                 
-                _target = scale || $gameMap._dp_scale;
+                _target = scale || $gameScreen.zoomScale();
                 _duration = duration || 0;
                 
-                _target_pan = pos || _start_pan;
+                _pan_target = pos || new PIXI.Point();
+                _pan_prev = dp_getpan();
                 
                 if(is_zoomout) {
                     dp_changeRenderSize(scale);
-                    camera.center();
+                    camera.center(_pan_prev.x, _pan_prev.y);
                 } else {
                     $gameMap._dp_scale = scale;
                 }
@@ -571,21 +569,21 @@ var drowsepost = drowsepost || {};
                     return;
                 }
                 
-                var d = _duration;
-                var t = _target;
-                $gameMap._dp_pan.x = (($gameMap._dp_pan.x * (d - 1) + _target_pan.x) / d);
-                $gameMap._dp_pan.y = (($gameMap._dp_pan.y * (d - 1) + _target_pan.y) / d);
+                _pan_prev.x = ((_pan_prev.x * (_duration - 1) + _pan_target.x) / _duration);
+                _pan_prev.y = ((_pan_prev.y * (_duration - 1) + _pan_target.y) / _duration);
                 
-                $gameScreen.setZoom(0, 0, (($gameScreen._zoomScale * (d - 1) + t) / d));
-                camera.center();
+                $gameScreen.setZoom(0, 0, (($gameScreen.zoomScale() * (_duration - 1) + _target) / _duration));
+                camera.center(_pan_prev.x, _pan_prev.y);
                 
                 _duration--;
             }),
             end : (function() {
                 if(!_active) return;
                 _active = false;
-                _duration = 0;
-                $gameMap._dp_pan = _target_pan;
+                
+                $gameMap._dp_pan = _pan_target;
+                camera.center();//画面乱れ防止用
+                
                 dp_setZoom(_target);
             })
         };
@@ -595,20 +593,16 @@ var drowsepost = drowsepost || {};
     
     camera.zoom = function(ratio, duration, target) {
         if(typeof ratio !== 'number') return;
-        zoomAnim.end();
         
-        $gameMap._dp_pan = dp_getpan($gameMap._dp_scale);
-        var target_pan = $gameMap._dp_pan;
+        var target_pan = dp_getpan();
+        if(typeof target !== 'undefined') {
+            target_pan = camera.target(target);
+        }
         
         if(duration > 0){
-            if(typeof target !== 'undefined') {
-                target_pan = camera.target(target);
-            }
-            zoomAnim.start(ratio, target_pan, duration);
+            camera.animation.start(ratio, target_pan, duration);
         } else {
-            if(typeof target !== 'undefined') {
-                $gameMap._dp_pan = camera.target(target);
-            }
+            $gameMap._dp_pan = target_pan;
             dp_setZoom(ratio);
         }
     };
@@ -627,10 +621,10 @@ var drowsepost = drowsepost || {};
             _target = $gamePlayer;
         }
         
-        return {
-            'x': _target._realX - $gamePlayer._realX,
-            'y': _target._realY - $gamePlayer._realY,
-        };
+        return new PIXI.Point(
+            _target._realX - $gamePlayer._realX,
+            _target._realY - $gamePlayer._realY
+        );
     };
     
     camera.center = function(panX, panY, force_center) {
