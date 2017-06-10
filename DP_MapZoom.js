@@ -289,6 +289,22 @@ var drowsepost = drowsepost || {};
     }());
     
     /*
+    Game CharacterBase
+    =============================================================================
+    キャラクターにフォーカスするプラグインを利用する場合、拡大率が反映されるメソッドで上書き
+    */
+    (function(){
+        Game_CharacterBase.prototype.centerX = function() {
+            return ($gameMap.screenTileX() - 1) / 2.0;
+        };
+        
+        Game_CharacterBase.prototype.centerY = function() {
+            return ($gameMap.screenTileY() - 1) / 2.0;
+        };
+        
+    }());
+    
+    /*
     Game Player
     =============================================================================
     拡大率の反映
