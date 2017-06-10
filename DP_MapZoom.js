@@ -42,8 +42,8 @@ var drowsepost = drowsepost || {};
  *
  * @param Use Hack
  * @desc Fix problem on the RPG Maker MV native code
- * Default: true (ON: true / OFF: false)
- * @default true
+ * Default: false (ON: true / OFF: false)
+ * @default false
  *
  * @help
  * ============================================================================
@@ -120,8 +120,8 @@ var drowsepost = drowsepost || {};
  *
  * @param Use Hack
  * @desc 画面拡大率変更時に画面にゴミが残る問題への対応を行う。
- * Default: true (ON: true / OFF: false)
- * @default true
+ * Default: false (ON: true / OFF: false)
+ * @default false
  *
  * @help
  * ============================================================================
@@ -172,8 +172,10 @@ var drowsepost = drowsepost || {};
  * 別プラグインで天候演出の制御を行っている場合等はfalseにしてください。
  * 
  * Use Hack
- * trueの場合マップサイズ変更時に古いオブジェクトが画面に残ってしまうバグを解決します。
+ * trueの場合マップサイズ変更時に古いオブジェクトが
+ * 画面に残ってしまうバグを解決します。
  * Tilemap内のBitmapを使いまわす変更をしている場合はfalseにしてください。
+ * ツクールMV ver 1.3.1以降はfalseで問題ありません。
  * 
  * Picture Size Fixation
  * trueの場合、ピクチャを拡大処理から除外します。
@@ -204,7 +206,9 @@ var drowsepost = drowsepost || {};
     var user_use_camera_transfer = Boolean(parameters['Camera Controll'] === 'minimum' || false);
     var user_fix_weather = Boolean(parameters['Weather Patch'] === 'true' || false);
     var user_fix_picture = Boolean(parameters['Picture Size Fixation'] === 'true' || false);
-
+    
+    var camera = {};
+    
     /*
     Bug fix
     TilemapのwidthやtileWidthを変更するたびにセッターにより_createLayersが呼ばれるが
@@ -410,7 +414,7 @@ var drowsepost = drowsepost || {};
         
         /*
         エンカウントエフェクト
-        置き換える場合は画面位置の変更前に $gameMap._dp_pan = dp_getpan($gameMap._dp_scale); を呼んでください
+        置き換える場合は画面位置の変更前に $gameMap._dp_pan = dp_getpan(); を呼んでください
         */
         if(!user_fix_encount) return;
         var encount_effect_started = false;
@@ -420,7 +424,7 @@ var drowsepost = drowsepost || {};
             //パン状態を保存
             if (!encount_effect_started) {
                 zoomAnim.end();
-                $gameMap._dp_pan = dp_getpan($gameMap._dp_scale);
+                $gameMap._dp_pan = dp_getpan();
                 encount_effect_started = true;
             }
             
@@ -470,6 +474,7 @@ var drowsepost = drowsepost || {};
     =============================================================================
     実際の拡大処理
     */
+    
     var dp_getpan = function() {
         var centerPosX = (($gameMap.screenTileX() - 1) / 2);
         var centerPosY = (($gameMap.screenTileY() - 1) / 2);
@@ -572,7 +577,6 @@ var drowsepost = drowsepost || {};
         return r;
     }());
     
-    var camera = {};
     camera.zoom = function(ratio, duration, target) {
         if(typeof ratio !== 'number') return;
         zoomAnim.end();
@@ -643,7 +647,7 @@ var drowsepost = drowsepost || {};
                 else _target = Number(_a[2]);
             }
             
-            drowsepost.setZoom(Number(_a[0]), Number(_a[1]), _target);
+            camera.zoom(Number(_a[0]), Number(_a[1]), _target);
         }(this, command, args));
         
     }
