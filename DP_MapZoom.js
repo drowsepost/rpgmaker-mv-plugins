@@ -1,7 +1,7 @@
 //=============================================================================
 // drowsepost Plugins - Map Zooming Controller
 // DP_MapZoom.js
-// Version: 0.6
+// Version: 0.65
 // https://github.com/drowsepost/rpgmaker-mv-plugins/blob/master/DP_MapZoom.js
 //=============================================================================
 
@@ -27,7 +27,7 @@ var drowsepost = drowsepost || {};
  *
  * @param Camera Controll
  * @desc camera control during magnification processing
- * Default: true (ON: true / OFF: false)
+ * Default: true (ON: true / OFF: false / Minimum: minimum)
  * @default true
  *
  * @param Weather Patch
@@ -104,8 +104,8 @@ var drowsepost = drowsepost || {};
  * @default true
  *
  * @param Camera Controll
- * @desc 拡大処理中のカメラ制御をこのプラグインが行う
- * Default: true (ON: true / OFF: false)
+ * @desc 拡大処理中のセンタリング制御をこのプラグインが行う
+ * Default: true (ON: true / OFF: false / 最小: minimum)
  * @default true
  *
  * @param Weather Patch
@@ -201,6 +201,7 @@ var drowsepost = drowsepost || {};
     var user_fix_encount = Boolean(parameters['Encount Effect'] === 'true' || false);
     var user_fix_deephack = Boolean(parameters['Use Hack'] === 'true' || false);
     var user_use_camera = Boolean(parameters['Camera Controll'] === 'true' || false);
+    var user_use_camera_transfer = Boolean(parameters['Camera Controll'] === 'minimum' || false);
     var user_fix_weather = Boolean(parameters['Weather Patch'] === 'true' || false);
     var user_fix_picture = Boolean(parameters['Picture Size Fixation'] === 'true' || false);
 
@@ -389,6 +390,9 @@ var drowsepost = drowsepost || {};
             //移動後の場合、パンをリセット
             $gameMap._dp_pan = this._transfer ? {'x': 0, 'y': 0} : $gameMap._dp_pan;
             dp_setZoom($gameMap._dp_scale);
+            
+            //画面中心を強制設定する
+            if((!user_use_camera) && user_use_camera_transfer) camera.center(null, null, true);
         };
         
         /*
@@ -609,8 +613,8 @@ var drowsepost = drowsepost || {};
         };
     };
     
-    camera.center = function(panX, panY) {
-        if(!user_use_camera) return;
+    camera.center = function(panX, panY, force_center) {
+        if((!user_use_camera) && (!force_center)) return;
         var px = Number(panX || $gameMap._dp_pan.x);
         var py = Number(panY || $gameMap._dp_pan.y);
         $gamePlayer.center($gamePlayer._realX + px, $gamePlayer._realY + py);
