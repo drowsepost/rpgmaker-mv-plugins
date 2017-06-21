@@ -1,7 +1,7 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Map Camera Controller
 // DP_MapZoom.js
-// Version: 0.8
+// Version: 0.81
 // https://github.com/drowsepost/rpgmaker-mv-plugins/blob/master/DP_MapZoom.js
 //=============================================================================
 
@@ -310,6 +310,19 @@ var drowsepost = drowsepost || {};
         return new PIXI.Point(
             camera.target.screenX(),
             camera.target.screenY() - ($gameMap.tileHeight() / 2)
+        );
+    };
+    
+    /**
+     * マップのレンダリング原点と表示位置のずれを取得します。
+     * @return {object} PIXI.Point
+     */
+    var dp_getVisiblePos = function () {
+        var screen = $gameScreen;
+        var scale = screen.zoomScale();
+        return new PIXI.Point(
+            Math.round(screen.zoomX() * (scale - dp_renderSize.scale)),
+            Math.round(screen.zoomY() * (scale - dp_renderSize.scale))
         );
     };
     
@@ -759,8 +772,9 @@ var drowsepost = drowsepost || {};
         Sprite_Picture.prototype.updatePosition = function() {
             _parent_updatePosition.call(this);
             var picture = this.picture();
-            this.x = Math.floor(picture.x() * (1 / $gameScreen.zoomScale()));
-            this.y = Math.floor(picture.y() * (1 / $gameScreen.zoomScale()));
+            var map_s = dp_getVisiblePos();
+            this.x = Math.floor((picture.x() + map_s.x) * (1 / $gameScreen.zoomScale()));
+            this.y = Math.floor((picture.y() + map_s.y) * (1 / $gameScreen.zoomScale()));
         };
     }());
     
@@ -775,10 +789,9 @@ var drowsepost = drowsepost || {};
         var _parent_updatePosition = Spriteset_Base.prototype.updatePosition;
         Spriteset_Base.prototype.updatePosition = function() {
             _parent_updatePosition.call(this);
-            var screen = $gameScreen;
-            var scale = screen.zoomScale();
-            this.x = Math.round(-$gameScreen.zoomX() * (scale - dp_renderSize.scale));
-            this.y = Math.round(-$gameScreen.zoomY() * (scale - dp_renderSize.scale));
+            var map_s = dp_getVisiblePos();
+            this.x = map_s.x * -1;
+            this.y = map_s.y * -1;
         };
     }());
     
