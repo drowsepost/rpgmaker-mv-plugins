@@ -1,7 +1,7 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Map Camera Controller
 // DP_MapZoom.js
-// Version: 0.81
+// Version: 0.811
 // https://github.com/drowsepost/rpgmaker-mv-plugins/blob/master/DP_MapZoom.js
 //=============================================================================
 
@@ -825,6 +825,9 @@ var drowsepost = drowsepost || {};
                     
                 //パン
                 $gameMap._dp_pan = new PIXI.Point();
+                
+                //標準レンダリングサイズにリセット
+                dp_renderSize._scale = 1;
             }
             
             //カメラターゲット設定
