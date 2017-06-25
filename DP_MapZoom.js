@@ -1,7 +1,7 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Map Camera Controller
 // DP_MapZoom.js
-// Version: 0.812
+// Version: 0.813
 // https://github.com/drowsepost/rpgmaker-mv-plugins/blob/master/DP_MapZoom.js
 //=============================================================================
 
@@ -285,6 +285,13 @@ var drowsepost = drowsepost || {};
             }
             
             spriteset._tilemap.refresh();
+        }),
+        
+        /**
+         * scaleをリセットします
+         */
+        reset: (function(){
+            this._scale = 1;
         })
     };
     
@@ -580,13 +587,12 @@ var drowsepost = drowsepost || {};
     コマンドパーサーの追加
     */
     (function(){
-        if('DP_Basics' in Imported) return;
-        
         //@override
         var _parent_pluginCommand = Game_Interpreter.prototype.pluginCommand;
         Game_Interpreter.prototype.pluginCommand = function(command, args) {
             _parent_pluginCommand.call(this, command, args);
             
+            if('DP_Basics' in Imported) return;
             if(!(command in drowsepost.fn)) return;
             if(typeof drowsepost.fn[command] === 'function') {
                 drowsepost.fn[command].call(this, args);
@@ -825,10 +831,10 @@ var drowsepost = drowsepost || {};
                     
                 //パン
                 $gameMap._dp_pan = new PIXI.Point();
-                
-                //標準レンダリングサイズにリセット
-                dp_renderSize._scale = 1;
             }
+            
+            //標準レンダリングサイズにリセット
+            dp_renderSize.reset();
             
             //カメラターゲット設定
             camera.target = $gameMap._dp_target;
