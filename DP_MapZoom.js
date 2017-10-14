@@ -19,31 +19,45 @@ var drowsepost = drowsepost || {};
  * @desc Set the basic magnification ratio.(Start up)
  * Default: 1 (0 or more)
  * @default 1
+ * @type number
+ * @min 0
+ * @max 999
  *
  * @param Encount Effect
  * @desc Corrected code of encounter effect
  * Default: true (ON: true / OFF: false)
  * @default true
+ * @type boolean
  *
  * @param Camera Controll
  * @desc camera control during magnification processing
  * Default: true (ON: true / OFF: false / Minimum: minimum)
  * @default true
+ * @type select
+ * @option ON
+ * @value true
+ * @option OFF
+ * @value false
+ * @option Minimum
+ * @value minimum
  *
  * @param Weather Patch
  * @desc Change weather sprite generation range
  * Default: true (ON: true / OFF: false)
  * @default true
+ * @type boolean
  * 
  * @param Picture Size Fixation
  * @desc Exclude pictures from map zooming process
- * Default: false (ON: true / OFF: false)
- * @default false
+ * Default: true (ON: true / OFF: false)
+ * @default true
+ * @type boolean
  * 
  * @param Old Focus
  * @desc Use trackless focus similar to the old version.
  * Default: false (ON: true / OFF: false)
  * @default false
+ * @type boolean
  *
  * @help
  * ============================================================================
@@ -121,31 +135,45 @@ var drowsepost = drowsepost || {};
  * @desc 基本の拡大率を設定します。(0以上)
  * Default: 1
  * @default 1
+ * @type number
+ * @min 0
+ * @max 999
  *
  * @param Encount Effect
  * @desc エンカウントエフェクトに拡大率を反映
  * Default: true (ON: true / OFF: false)
  * @default true
+ * @type boolean
  *
  * @param Camera Controll
  * @desc 拡大処理中のセンタリング制御をこのプラグインが行う
  * Default: true (ON: true / OFF: false / 最小: minimum)
  * @default true
+ * @type select
+ * @option ON
+ * @value true
+ * @option OFF
+ * @value false
+ * @option Minimum
+ * @value minimum
  *
  * @param Weather Patch
  * @desc 天候スプライトの生成範囲を広げる修正を適用します。
  * Default: true (ON: true / OFF: false)
  * @default true
+ * @type boolean
  * 
  * @param Picture Size Fixation
  * @desc ピクチャをマップの拡大処理から除外します
- * Default: false (ON: true / OFF: false)
- * @default false
+ * Default: true (ON: true / OFF: false)
+ * @default true
+ * @type boolean
  * 
  * @param Old Focus
  * @desc 古いバージョンの追跡なしのフォーカスを使用します。
  * Default: false (ON: true / OFF: false)
  * @default false
+ * @type boolean
  *
  * @help
  * ============================================================================
@@ -795,9 +823,12 @@ var drowsepost = drowsepost || {};
         var _parent_updatePosition = Spriteset_Base.prototype.updatePosition;
         Spriteset_Base.prototype.updatePosition = function() {
             _parent_updatePosition.call(this);
+            
             var map_s = dp_getVisiblePos();
             this.x = map_s.x * -1;
             this.y = map_s.y * -1;
+            
+            this.x += Math.round($gameScreen.shake());
         };
     }());
     
