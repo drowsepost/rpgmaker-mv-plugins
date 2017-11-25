@@ -26,6 +26,10 @@ http://tm.lucky-duet.com/viewtopic.php?f=5&t=1409&p=4310
 ### Support
 http://tm.lucky-duet.com/viewtopic.php?f=5&t=353
 
+## DP_SmoothSettings.js
+各リソース拡大時のスムージング(ぼやけるかどうか)の有無を設定します。
+環境によっては必ずスムージングが入ってしまう場合がありますがご了承ください。
+
 ## DP_SkipTitle.js
 タイトルシーンを安全にスキップします。
 
