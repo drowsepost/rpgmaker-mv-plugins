@@ -189,7 +189,7 @@ Imported.DP_SmoothSettings = true;
  * 
  * @param Title2
  * @desc タイトル枠のスムージング
- * @desc Default: true
+ * Default: true
  * @default true
  * @type boolean
  *
@@ -249,7 +249,7 @@ Imported.DP_SmoothSettings = true;
     */
     var overrideManager = (function(func, type) {
         if(typeof ImageManager[func + type] !== 'function') {
-            console.log("DP_SmoothSettings: can't suport this project. " + func + type + " is not function", ImageManager[func + type]);
+            console.log("DP_SmoothSettings: can't suport this project. ImageManager." + func + type + " is not a function", ImageManager[func + type]);
             return;
         }
         
@@ -264,7 +264,6 @@ Imported.DP_SmoothSettings = true;
     /*
     Boot
     =============================================================================
-    i need forEach in MSIE...
     */
     for(var i = 0; i < funcList.length;i++) {
         for(var v = 0; v < typeList.length;v++) {
