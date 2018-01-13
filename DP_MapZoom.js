@@ -1,7 +1,7 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Map Camera Controller
 // DP_MapZoom.js
-// Version: 0.821
+// Version: 0.822
 // https://github.com/drowsepost/rpgmaker-mv-plugins/blob/master/DP_MapZoom.js
 //=============================================================================
 
@@ -932,6 +932,13 @@ var drowsepost = drowsepost || {};
         Game_Screen.prototype.update = function() {
             _parent_update.call(this);
             camera.animation.update();
+        };
+        
+        //@override
+        var _parent_initialize = Game_Screen.prototype.initialize;
+        Game_Screen.prototype.initialize = function() {
+            _parent_initialize.call(this);
+            dp_renderSize.reset();
         };
     }());
     
