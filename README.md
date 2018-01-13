@@ -1,4 +1,6 @@
 # Drowsepost RPG Maker MV Plugins
+RPGツクールMVで利用可能なオリジナルプラグインです。
+ファイルごとに個別に利用できます。
 (It supports only the current Japan words now)
 
 * * *
@@ -33,6 +35,9 @@ http://tm.lucky-duet.com/viewtopic.php?f=5&t=1409&p=4310
 
 ### DP_DeviceSwitcher.js
 ゲーム全体で利用する入力機器を制限します。
+
+### DP_ItemHelper.js
+所持アイテムの種類を指定して一括して削除するプラグインコマンドと、種類ごとの総額・総数や一覧を取得するスクリプトを追加します
 
 * * *
 ## UnActive
