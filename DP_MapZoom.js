@@ -1,8 +1,11 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Map Camera Controller
 // DP_MapZoom.js
-// Version: 0.822
-// https://github.com/drowsepost/rpgmaker-mv-plugins/blob/master/DP_MapZoom.js
+// Version: 0.83
+// 
+// Copyright (c) 2016 - 2018 canotun
+// Released under the MIT license.
+// http://opensource.org/licenses/mit-license.php
 //=============================================================================
 
 var Imported = Imported || {};
@@ -120,8 +123,6 @@ var drowsepost = drowsepost || {};
  * 
  * This plugin use savedata
  * "$gameMap._dp_scale", "$gameMap._dp_pan", "$gameMap._dp_target"
- * 
- * license: MIT
  * 
  */
  /*:ja
@@ -252,8 +253,6 @@ var drowsepost = drowsepost || {};
  * シーン離脱時のスクロール量は$gameMap._dp_panが保持します。
  * マップのフォーカスイベントは$gameMap._dp_targetが保持します。
  * 
- * ライセンス: MIT
- * 
  */
 (function() {
     "use strict";
@@ -307,6 +306,8 @@ var drowsepost = drowsepost || {};
             }
             
             spriteset._tilemap.refresh();
+            spriteset._tilemap._needsRepaint = true;
+            spriteset._tilemap.updateTransform();
         }),
         
         /**
@@ -919,6 +920,26 @@ var drowsepost = drowsepost || {};
         };
         //エンカウントエフェクトここまで
         
+    }());
+    
+    /*
+    Scene_Map
+    =============================================================================
+    Canvasモード時の軽量化
+    */
+    (function(){
+        //@override
+        var _Tilemap_createLayers = Tilemap.prototype._createLayers;
+        Tilemap.prototype._createLayers = function() {
+            if(this._lowerLayer instanceof Sprite) {
+                this.removeChild(this._lowerLayer);
+            }
+            if(this._upperLayer instanceof Sprite) {
+                this.removeChild(this._upperLayer);
+            }
+            
+            _Tilemap_createLayers.call(this);
+	    };
     }());
     
     /*
