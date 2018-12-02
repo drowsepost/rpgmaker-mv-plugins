@@ -1,7 +1,7 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Map Camera Controller
 // DP_MapZoom.js
-// Version: 0.831
+// Version: 0.84
 // 
 // Copyright (c) 2016 - 2018 canotun
 // Released under the MIT license.
@@ -58,6 +58,12 @@ var drowsepost = drowsepost || {};
  * Default: false (ON: true / OFF: false)
  * @default false
  * @type boolean
+ *
+ * @param Easing Function
+ * @desc animation Easing function.
+ * args: t (0.00～1.00) return: Number (0.00～1.00) Default: t
+ * @default t
+ * @type string
  *
  * @help
  * ============================================================================
@@ -170,6 +176,12 @@ var drowsepost = drowsepost || {};
  * @default false
  * @type boolean
  *
+ * @param Easing Function
+ * @desc アニメーションのイージング式。
+ * 引数 t (0.00～1.00) 戻り値 数値(0.00～1.00) Default: t
+ * @default t
+ * @type string
+ *
  * @help
  * ============================================================================
  * About
@@ -238,6 +250,10 @@ var drowsepost = drowsepost || {};
  * trueの場合、古いDP_MapZoom.jsと同様のフォーカス処理を行います。
  * このフォーカス処理は対象イベントまでの座標のずれを基準にしているため、
  * イベントの移動を追尾しません。
+ *
+ * Easing Function
+ * ズーム時のイージングを主に0から1の間で戻す式を設定できます。
+ * 引数 t にズームの進捗が0から1で入ります。JavaScript。
  * 
  * ============================================================================
  * Technical information
@@ -256,6 +272,9 @@ var drowsepost = drowsepost || {};
  */
 (function() {
     "use strict";
+    var user_map_marginright = 0;
+    var user_map_marginbottom = 0;
+    
     var parameters = PluginManager.parameters('DP_MapZoom');
     var user_scale = Number(parameters['Base Scale'] || 1);
     var user_fix_encount = Boolean(parameters['Encount Effect'] === 'true' || false);
@@ -264,8 +283,7 @@ var drowsepost = drowsepost || {};
     var user_fix_weather = Boolean(parameters['Weather Patch'] === 'true' || false);
     var user_fix_picture = Boolean(parameters['Picture Size Fixation'] === 'true' || false);
     var user_use_oldfocus = Boolean(parameters['Old Focus'] === 'true' || false);
-    var user_map_marginright = 0;
-    var user_map_marginbottom = 0;
+    var user_easing_function = parameters['Easing Function'];
     
     /*
     Main Functions
@@ -334,10 +352,10 @@ var drowsepost = drowsepost || {};
     
     /**
      * ズームすべき座標を算出
-     * @return {object} PIXI.Point
+     * @return {object} Point
      */
     var dp_getZoomPos = function() {
-        return new PIXI.Point(
+        return new Point(
             camera.target.screenX(),
             camera.target.screenY() - ($gameMap.tileHeight() / 2)
         );
@@ -345,20 +363,19 @@ var drowsepost = drowsepost || {};
     
     /**
      * マップのレンダリング原点と表示位置のずれを取得します。
-     * @return {object} PIXI.Point
+     * @return {object} Point
      */
     var dp_getVisiblePos = function () {
-        var screen = $gameScreen;
-        var scale = screen.zoomScale();
-        return new PIXI.Point(
-            Math.round(screen.zoomX() * (scale - dp_renderSize.scale)),
-            Math.round(screen.zoomY() * (scale - dp_renderSize.scale))
+        var scale = $gameScreen.zoomScale();
+        return new Point(
+            Math.round($gameScreen.zoomX() * (scale - dp_renderSize.scale)),
+            Math.round($gameScreen.zoomY() * (scale - dp_renderSize.scale))
         );
     };
     
     /**
      * フォーカスされているキャラクターから画面の中心がどれだけずれているか取得します
-     * @return {object} PIXI.Point
+     * @return {object} Point
      */
     var dp_getpan = function() {
         var centerPosX = (($gameMap.screenTileX() - 1) / 2);
@@ -367,7 +384,7 @@ var drowsepost = drowsepost || {};
         var pan_x = ($gameMap.displayX() + centerPosX) - camera.target._realX;
         var pan_y = ($gameMap.displayY() + centerPosY) - camera.target._realY;
         
-        return new PIXI.Point(
+        return new Point(
             ($gameMap.screenTileX() >= $dataMap.width )? 0 : pan_x,
             ($gameMap.screenTileY() >= $dataMap.height )? 0 : pan_y
         );
@@ -385,6 +402,72 @@ var drowsepost = drowsepost || {};
         camera.center();
     };
     
+    /**
+     * 指定されたイベントIDをイベントインスタンスにして返却
+     * @param {any} event イベントIDもしくはイベントオブジェクトもしくはプレイヤー
+     * @return {object} Game_CharacterBase
+     */
+    var dp_getEvent = function(event) {
+        var _target;
+        if(typeof event === 'object') {
+            if('_eventId' in event) _target = $gameMap.event(event._eventId);
+        }
+        
+        if(typeof event === 'number') {
+            _target = $gameMap.event(event);
+        }
+        
+        if(!(_target instanceof Game_CharacterBase)) {
+            _target = $gamePlayer;
+        }
+        
+        return _target;
+    }
+    
+    /**
+     * カメラターゲットから目標イベントまでのマップ上のズレ(x,y)を取得
+     * @param {any} event イベントIDもしくはイベントオブジェクトもしくはプレイヤー
+     * @return {object} Point
+     */
+    var dp_targetPan = function(event) {
+        var _target = dp_getEvent(event);
+        
+        return new Point(
+            _target._realX - camera.target._realX,
+            _target._realY - camera.target._realY
+        );
+    };
+    
+    /**
+     * 文字列をイージング用関数としてコンパイルした関数を返します
+     * @param {String|Function} txt_func
+     * @return {Function} イージング用関数、引数は float t
+     */
+    var dp_txtToEasing = (function(txt_func){
+        var basic_func = (function(t){return t;});
+        if(typeof txt_func === 'function') return txt_func;
+        if(typeof txt_func !== 'string') return basic_func;
+        if(txt_func == '') return basic_func;
+        
+        try {
+            return new Function('t', 'return ' + txt_func + ';');
+        } catch(e) {
+            console.error('DP_MapZoom: Easing Function', e, txt_func);
+        }
+        return basic_func;
+    });
+    
+    /**
+     * 線形補完
+     * @param {Number} p 入力進捗率
+     * @param {Number} from 開始数値
+     * @param {Number} to 目標数値
+     * @return {Number} 結果進捗率
+     */
+    var dp_lerp = (function(p, from, to){
+        return from + (to - from) * p;
+    });
+    
     /*
     Camera Object
     ===================================================================================
@@ -396,27 +479,32 @@ var drowsepost = drowsepost || {};
     camera.animation = (function(){
         //private
         var _active = false;
-        var _duration, _target, _pan_target, _pan_prev;
+        var _count, _duration, _target, _pan_target;
+        var _start_pan, _start_scale;
+        var _easing = dp_txtToEasing(user_easing_function);
         
         //public
         var r = {
             /**
              * アニメーションのスタート
-             * @param {number} scale 目標とする拡大率
-             * @param {object} pos 目標とする座標のズレ PIXI.Point
-             * @param {number} dulation 変化にかけるフレーム
+             * @param {Number} scale 目標とする拡大率
+             * @param {Point} pos 目標とする座標のズレ
+             * @param {Number} dulation 変化にかけるフレーム
              */
             start : (function(scale, pos, duration) {
                 var is_zoomout = ($gameScreen.zoomScale() > scale)? true : false;
                 
-                _target = scale || $gameScreen.zoomScale();
+                _count = 0;
                 _duration = duration || 0;
-                _pan_target = pos || new PIXI.Point();
-                _pan_prev = dp_getpan();
+                _target = scale || $gameScreen.zoomScale();
+                _pan_target = pos || new Point();
+                
+                _start_pan = dp_getpan();
+                _start_scale = $gameScreen.zoomScale();
                 
                 if(is_zoomout) {
                     dp_renderSize.scale = scale;
-                    camera.center(_pan_prev.x, _pan_prev.y);
+                    camera.center(_start_pan.x, _start_pan.y);
                 }
                 
                 _active = true;
@@ -427,18 +515,24 @@ var drowsepost = drowsepost || {};
              */
             update: (function() {
                 if(!_active) return;
-                if(_duration <= 1) {
+                
+                var p = _count / _duration;
+                _count++;
+                
+                if(p > 1) {
                     r.end();
                     return;
                 }
                 
-                _pan_prev.x = ((_pan_prev.x * (_duration - 1) + _pan_target.x) / _duration);
-                _pan_prev.y = ((_pan_prev.y * (_duration - 1) + _pan_target.y) / _duration);
+                if(_count % 2 === 0) return;
                 
-                $gameScreen.setZoom(0, 0, (($gameScreen.zoomScale() * (_duration - 1) + _target) / _duration));
-                camera.center(_pan_prev.x, _pan_prev.y);
+                var ease = _easing(p);
+                var x = dp_lerp(ease, _start_pan.x, _pan_target.x);
+                var y = dp_lerp(ease, _start_pan.y, _pan_target.y);
+                var z = dp_lerp(ease, _start_scale, _target);
                 
-                _duration--;
+                $gameScreen.setZoom(0, 0, z);
+                camera.center(x, y);
             }),
             /**
              * アニメーションの終了
@@ -469,10 +563,10 @@ var drowsepost = drowsepost || {};
         var target_pan = dp_getpan();
         if(typeof target !== 'undefined') {
             if(user_use_oldfocus) {
-                target_pan = camera.targetPan(target);
+                target_pan = dp_targetPan(target);
             } else {
                 camera.target = target;
-                target_pan = new PIXI.Point();
+                target_pan = new Point();
             }
         }
         
@@ -482,42 +576,6 @@ var drowsepost = drowsepost || {};
             $gameMap._dp_pan = target_pan;
             dp_setZoom(ratio);
         }
-    };
-    
-    /**
-     * 指定されたイベントIDをイベントインスタンスにして返却
-     * @param {any} event イベントIDもしくはイベントオブジェクトもしくはプレイヤー
-     * @return {object} Game_CharacterBase
-     */
-    camera.getEvent = function(event) {
-        var _target;
-        if(typeof event === 'object') {
-            if('_eventId' in event) _target = $gameMap.event(event._eventId);
-        }
-        
-        if(typeof event === 'number') {
-            _target = $gameMap.event(event);
-        }
-        
-        if(!(_target instanceof Game_CharacterBase)) {
-            _target = $gamePlayer;
-        }
-        
-        return _target;
-    }
-    
-    /**
-     * カメラターゲットから目標イベントまでのマップ上のズレ(x,y)を取得
-     * @param {any} event イベントIDもしくはイベントオブジェクトもしくはプレイヤー
-     * @return {object} PIXI.Point
-     */
-    camera.targetPan = function(event) {
-        var _target = camera.getEvent(event);
-        
-        return new PIXI.Point(
-            _target._realX - camera.target._realX,
-            _target._realY - camera.target._realY
-        );
     };
     
     /**
@@ -544,7 +602,7 @@ var drowsepost = drowsepost || {};
             return $gameMap.event($gameMap._dp_target);
         },
         set: function(event) {
-            var _target = camera.getEvent(event);
+            var _target = dp_getEvent(event);
             
             $gameMap._dp_target = 0;
             if(typeof _target === 'object') {
@@ -637,7 +695,7 @@ var drowsepost = drowsepost || {};
             
             //保存用変数エントリー
             this._dp_scale = user_scale;
-            this._dp_pan = new PIXI.Point();
+            this._dp_pan = new Point();
             this._dp_target = 0;
         };
         
@@ -856,7 +914,7 @@ var drowsepost = drowsepost || {};
                     : 0;
                     
                 //パン
-                $gameMap._dp_pan = new PIXI.Point();
+                $gameMap._dp_pan = new Point();
             }
             
             //標準レンダリングサイズにリセット
