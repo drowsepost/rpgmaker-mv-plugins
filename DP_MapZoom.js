@@ -1,7 +1,7 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Map Camera Controller
 // DP_MapZoom.js
-// Version: 0.83
+// Version: 0.831
 // 
 // Copyright (c) 2016 - 2018 canotun
 // Released under the MIT license.
@@ -923,7 +923,7 @@ var drowsepost = drowsepost || {};
     }());
     
     /*
-    Scene_Map
+    Tilemap
     =============================================================================
     Canvasモード時の軽量化
     */
@@ -932,10 +932,10 @@ var drowsepost = drowsepost || {};
         var _Tilemap_createLayers = Tilemap.prototype._createLayers;
         Tilemap.prototype._createLayers = function() {
             if(this._lowerLayer instanceof Sprite) {
-                this.removeChild(this._lowerLayer);
+               this._lowerLayer.destroy();
             }
             if(this._upperLayer instanceof Sprite) {
-                this.removeChild(this._upperLayer);
+                this._upperLayer.destroy();
             }
             
             _Tilemap_createLayers.call(this);
