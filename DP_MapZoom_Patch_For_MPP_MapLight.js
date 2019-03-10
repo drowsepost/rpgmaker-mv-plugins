@@ -1,9 +1,9 @@
 //=============================================================================
 // 🏤drowsepost Plugins - DP_MapZoom.js Patch for MPP_MapLight.js incompatibility
 // DP_MapZoom_Patch_For_MPP_MapLight
-// Version: 0.01
+// Version: 0.02
 // 
-// Copyright (c) 2018 canotun
+// Copyright (c) 2019 canotun
 // Released under the MIT license.
 // http://opensource.org/licenses/mit-license.php
 //=============================================================================
@@ -38,7 +38,7 @@
     	console.log('DP_MapZoom.js MPP_MapLight patch : Please place this patch after patch MPP_MapLight.js');
     	return;
     }
-    
+	
 	Tilemap.prototype._resizeDarknessLayer = function() {
 	    var size = Tilemap._darknessTileSize;
 	    
@@ -48,13 +48,13 @@
 	    var layerWidth = tileCols * size;
 	    var layerHeight = tileRows * size;
 	    
-	    this._darknessBitmap.resize(tileCols, tileRows);
+	    this._darknessLayer.bitmap.resize(layerWidth, layerHeight);
+		this._darknessLayer.bitmap.fillAll();
+		
 	    this._darknessLayer.width = layerWidth;
-	    this._darknessLayer.height = layerHeight;
-	    
-	    this._darknessLayer.move(-this._margin, -this._margin);
-	    this._darknessLayer.scale.x = this._tileWidth / size;
-	    this._darknessLayer.scale.y = this._tileHeight / size;
+		this._darknessLayer.height = layerHeight;
+		
+	    this._darknessBitmap.resize(tileCols, tileRows);
 	}
 
 	var Tilemap__createDarknessLayer = Tilemap.prototype._createDarknessLayer;
@@ -64,8 +64,10 @@
 	    } else {
 	    	Tilemap__createDarknessLayer.call(this);
 		}
-		
 	}
-    
+
+	ShaderTilemap.prototype._createDarknessLayer = function() {
+		Tilemap.prototype._createDarknessLayer.call(this);
+	};
     
 }());
