@@ -1,8 +1,11 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Basics
 // DP_Basics.js
-// Version: 0.1
-// canotun
+// Version: 0.11
+// 
+// Copyright (c) 2017 - 2019 canotun
+// Released under the MIT license.
+// http://opensource.org/licenses/mit-license.php
 //=============================================================================
 
 var Imported = Imported || {};
@@ -15,10 +18,30 @@ var drowsepost = drowsepost || {};
  * @plugindesc 基礎スクリプトと小品の詰め合わせ
  * @author drowsepost
  *
+ * @param MovingSpeed
+ * @desc キャラクター移動速度の変更
+ * Default: 1
+ * @default 1
+ *
+ * @param EventTouchToStart
+ * @desc タッチ操作でイベントを起動するかどうか。移動中の誤爆防止
+ * Default: true
+ * @default true
+ * @type boolean
+ *
  * @param PointType
  * @desc タップ位置の見た目。falseで無効
  * Default: false (四角グラデ: square / 丸: circle / 非表示: hidden)
  * @default false
+ * @type select
+ * @option 標準
+ * @value false
+ * @option 四角
+ * @value square
+ * @option 丸
+ * @value circle
+ * @option 非表示
+ * @value hidden
  * 
  * @param PointColor
  * @desc タップ位置の色
@@ -29,6 +52,7 @@ var drowsepost = drowsepost || {};
  * @desc キー移動をWASD方式で行うQ/WはQ/Eに変更
  * Default: false (ON: true / OFF: false)
  * @default false
+ * @type boolean
  *
  * @param SkipTitleWait
  * @desc タイトルでニューゲームが自動選択されるまでのフレーム数。
@@ -39,6 +63,7 @@ var drowsepost = drowsepost || {};
  * @desc タイトルのウィンドウを非表示にします。
  * Default: false
  * @default false
+ * @type boolean
  * 
  * @help
  * 共通して利用可能なユーティリティーを提供します。
@@ -73,6 +98,8 @@ var drowsepost = drowsepost || {};
     var user_move_wasd = Boolean(parameters['WASD Move'] == 'true' || false);
     var user_title_wait = Number(parameters['SkipTitleWait'] || 1);
     var user_title_hidewindow = Boolean(parameters['SkipTitleHideWindow'] === 'true' || false);
+    var user_moving_speed = Number(parameters['MovingSpeed'] || 1);
+    var user_event_touchstart = Boolean(parameters['EventTouchToStart'] == 'true' || false);
     
     var _dp_ = {};
     
@@ -106,25 +133,40 @@ var drowsepost = drowsepost || {};
             if (v === value) return i;
         });
     });
-        
+    
+    /**
+     * 数値を比率で遷移させたものを返します。
+     * @param {number} ratio 0 to 1 
+     * @param {number} from 
+     * @param {number} to 
+     * @return {number}
+     */
+    _dp_.lerp = (function(ratio, from, to){
+        return from + (to - from) * ratio;
+    });
+    
     /**
      * オブジェクトの数値を比率で遷移させたものを返します。
      * @param {number} ratio 0 to 1 
      * @param {object} from 
      * @param {object} to 
+     * @param {boolian} is_real
      * @return {object}
      */
-    _dp_.objectLerp = (function(ratio, from, to){
+    _dp_.objectLerp = (function(ratio, from, to, is_real){
         var r = {};
-        var d = 0;
+        
+        var c;
         for (var key in from) {
             if (!(key in to)) continue;
-            
             if (typeof from[key] !== 'number') continue;
             if (typeof to[key] !== 'number') continue;
             
-            d= to[key] - from[key];
-            r[key] = to[key] + (d * ratio);
+            r[key] = _dp_.lerp(ratio, from[key], to[key]);
+            
+            if(is_real) {
+                from[key] = r[key];
+            }
         }
         
         return r;
@@ -134,9 +176,9 @@ var drowsepost = drowsepost || {};
     Key Utility
     */
     (function(){
-        var keycord = {};
+        var keycode = {};
         
-        keycord.roles = [
+        keycode.roles = [
             'tab',
             'control',
             'ok',
@@ -151,7 +193,7 @@ var drowsepost = drowsepost || {};
             'debug',
         ];
         
-        keycord.keys = {
+        keycode.keys = {
             'backspace' : 8,
             'tab' : 9,
             'enter' : 13,
@@ -252,40 +294,40 @@ var drowsepost = drowsepost || {};
             'singlequote' : 222,
         };
         
-        keycord.number = (function(_name){
+        keycode.number = (function(_name){
             var _n = _name.toLowerCase();
-            if(_n in keycord.keys) {
-                return keycord.keys[_n];
+            if(_n in keycode.keys) {
+                return keycode.keys[_n];
             } else {
                 return -1;
             }
         });
         
-        keycord.name = (function(_code){
-            var r = _dp_.indexOf(keycord.keys, _code);
+        keycode.name = (function(_code){
+            var r = _dp_.indexOf(keycode.keys, _code);
             if(r.length < 1) return '';
             return r[0];
         });
         
-        keycord.originalMapper = _dp_.marge({}, Input.keyMapper);
+        keycode.originalMapper = _dp_.marge({}, Input.keyMapper);
         
-        keycord.getMapper = (function(){
+        keycode.getMapper = (function(){
             return _dp_.marge({}, Input.keyMapper);
         });
         
-        keycord.updateMapper = (function(number, role){
+        keycode.updateMapper = (function(number, role){
             var t1 = (typeof number);
             var t2 = (typeof role);
             
             switch(t1){
                 case 'undefined':
-                    Input.keyMapper = _dp_.marge({}, keycord.originalMapper);
+                    Input.keyMapper = _dp_.marge({}, keycode.originalMapper);
                     return;
                 case 'object':
                     _dp_.marge(Input.keyMapper, number);
                     return;
                 case 'string':
-                    number = keycord.number(number);
+                    number = keycode.number(number);
                     if(number < 0) return;
                 default:
                     break;
@@ -303,15 +345,15 @@ var drowsepost = drowsepost || {};
             _dp_.marge(Input.keyMapper, r);
         });
         
-        keycord.resetMapper = (function(){
-            keycord.updateMapper();
+        keycode.resetMapper = (function(){
+            keycode.updateMapper();
         });
         
-        keycord.saveMapper = (function(){
-            keycord.originalMapper = _dp_.marge({}, Input.keyMapper);
+        keycode.saveMapper = (function(){
+            keycode.originalMapper = _dp_.marge({}, Input.keyMapper);
         });
         
-        Object.defineProperty(keycord, 'mapper', {
+        Object.defineProperty(keycode, 'mapper', {
             get: function() {
                 return this.getMapper;
             },
@@ -320,7 +362,7 @@ var drowsepost = drowsepost || {};
             }
         });
         
-        _dp_.keycord = _dp_.keycord || keycord;
+        _dp_.keycode = _dp_.keycord = _dp_.keycode || keycode;
     }());
     
     /*
@@ -347,6 +389,52 @@ var drowsepost = drowsepost || {};
             }
         };
         
+    }());
+    
+    /*
+    Game_CharacterBase
+    ===================================================================================
+    移動速度の変更
+    */
+    (function(){
+        //@override
+        var _Game_CharacterBase_distancePerFrame = Game_CharacterBase.prototype.distancePerFrame;
+        Game_CharacterBase.prototype.distancePerFrame = function() {
+            return _Game_CharacterBase_distancePerFrame.apply(this, arguments) * user_moving_speed;
+        };
+        
+    }());
+    
+    /*
+    Game_Player
+    ===================================================================================
+    タッチによるイベント起動を無効化
+    */
+    (function(){
+        //@override
+        var _parent_triggerTouchActionD2 = Game_Player.prototype.triggerTouchActionD2;
+        Game_Player.prototype.triggerTouchActionD2 = function(x2, y2) {
+            if ($gameMap.boat().pos(x2, y2) || $gameMap.ship().pos(x2, y2)) {
+                if (TouchInput.isTriggered() && this.getOnVehicle()) {
+                    return true;
+                }
+            }
+            if (this.isInBoat() || this.isInShip()) {
+                if (TouchInput.isTriggered() && this.getOffVehicle()) {
+                    return true;
+                }
+            }
+            
+            if(!user_event_touchstart) return false;
+            return _parent_triggerTouchActionD2.call(this, x2, y2);
+        };
+
+        //@override
+        var _parent_triggerTouchActionD3 = Game_Player.prototype.triggerTouchActionD3;
+        Game_Player.prototype.triggerTouchActionD3 = function(x2, y2) {
+            if(!user_event_touchstart) return false;
+            return _parent_triggerTouchActionD3.call(this, x2, y2);
+        };
     }());
     
     /*
@@ -432,11 +520,11 @@ var drowsepost = drowsepost || {};
     */
     (function(_d_){
         if(!user_move_wasd) return;
-        _d_.keycord.updateMapper('w', 'up');
-        _d_.keycord.updateMapper('a', 'left');
-        _d_.keycord.updateMapper('s', 'down');
-        _d_.keycord.updateMapper('d', 'right');
-        _d_.keycord.updateMapper('e', 'pagedown');
+        _d_.keycode.updateMapper('w', 'up');
+        _d_.keycode.updateMapper('a', 'left');
+        _d_.keycode.updateMapper('s', 'down');
+        _d_.keycode.updateMapper('d', 'right');
+        _d_.keycode.updateMapper('e', 'pagedown');
     }(drowsepost));
     
 }());
