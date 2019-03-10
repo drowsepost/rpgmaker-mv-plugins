@@ -1,7 +1,7 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Map Camera Controller
 // DP_MapZoom.js
-// Version: 0.84
+// Version: 0.85
 // 
 // Copyright (c) 2016 - 2018 canotun
 // Released under the MIT license.
@@ -73,6 +73,14 @@ var drowsepost = drowsepost || {};
  * reflecting the calculation of the enlargement ratio
  * to various coordinate processing.
  * (sorry... english support is immature. by drowsepost)
+ * 
+ * ============================================================================
+ * Knowing issue
+ * ============================================================================
+ * If the enlargement ratio is too small in a huge map,
+ * processing will be dropped in the canvas mode,
+ * and the map missing problem will occur in the webgl mode.
+ * This is the limit of the PIXI library and the solution is under investigation
  * 
  * ============================================================================
  * How To Use
@@ -190,6 +198,13 @@ var drowsepost = drowsepost || {};
  * マップシーンの拡大率を制御します。
  * また、指定したイベントをカメラが追うように指定します。
  * 標準のフォーカス対象は先頭のプレイヤーとなります。
+ * 
+ * ============================================================================
+ * Knowing issue
+ * ============================================================================
+ * 巨大なマップにおいて拡大率をあまりに小さくすると
+ * canvasモードで処理落ち、webglモードでマップ欠けの問題が発生します。
+ * これはPIXIライブラリの限界であり、解決方法は調査中です
  * 
  * ============================================================================
  * How To Use
@@ -312,8 +327,8 @@ var drowsepost = drowsepost || {};
             var spriteset = SceneManager._scene._spriteset;
             
             //マップサイズ変更
-            spriteset._tilemap.width = Math.ceil((Graphics.width + spriteset._tilemap._margin * 2) / scale);
-            spriteset._tilemap.height = Math.ceil((Graphics.height + spriteset._tilemap._margin * 2) / scale);
+            spriteset._tilemap.width = Math.ceil(Graphics.width / scale) + spriteset._tilemap._margin * 2;
+            spriteset._tilemap.height = Math.ceil(Graphics.height / scale) + spriteset._tilemap._margin * 2;
             
             //パララックスサイズ変更
             spriteset._parallax.move(0, 0, Math.round(Graphics.width / scale), Math.round(Graphics.height / scale));
@@ -439,7 +454,7 @@ var drowsepost = drowsepost || {};
     };
     
     /**
-     * 文字列をイージング用関数としてコンパイルした関数を返します
+     * 文字列をイージング用関数として評価した関数を返します
      * @param {String|Function} txt_func
      * @return {Function} イージング用関数、引数は float t
      */
@@ -479,9 +494,8 @@ var drowsepost = drowsepost || {};
     camera.animation = (function(){
         //private
         var _active = false;
-        var _count, _duration, _target, _pan_target;
-        var _start_pan, _start_scale;
-        var _easing = dp_txtToEasing(user_easing_function);
+        var _count, _duration, _easing;
+        var _start_pan, _start_scale, _end_pan, _end_scale;
         
         //public
         var r = {
@@ -496,8 +510,8 @@ var drowsepost = drowsepost || {};
                 
                 _count = 0;
                 _duration = duration || 0;
-                _target = scale || $gameScreen.zoomScale();
-                _pan_target = pos || new Point();
+                _end_scale = scale || $gameScreen.zoomScale();
+                _end_pan = pos || new Point();
                 
                 _start_pan = dp_getpan();
                 _start_scale = $gameScreen.zoomScale();
@@ -527,9 +541,9 @@ var drowsepost = drowsepost || {};
                 if(_count % 2 === 0) return;
                 
                 var ease = _easing(p);
-                var x = dp_lerp(ease, _start_pan.x, _pan_target.x);
-                var y = dp_lerp(ease, _start_pan.y, _pan_target.y);
-                var z = dp_lerp(ease, _start_scale, _target);
+                var x = dp_lerp(ease, _start_pan.x, _end_pan.x);
+                var y = dp_lerp(ease, _start_pan.y, _end_pan.y);
+                var z = dp_lerp(ease, _start_scale, _end_scale);
                 
                 $gameScreen.setZoom(0, 0, z);
                 camera.center(x, y);
@@ -541,10 +555,21 @@ var drowsepost = drowsepost || {};
                 if(!_active) return;
                 _active = false;
                 
-                $gameMap._dp_pan = _pan_target;
-                dp_setZoom(_target);
+                $gameMap._dp_pan = _end_pan;
+                dp_setZoom(_end_scale);
             })
         };
+    
+        Object.defineProperty(r, 'easing', {
+            get: function() {
+                return _easing;
+            },
+            set: function(val) {
+                _easing = dp_txtToEasing(val);
+            }
+        });
+        
+        r.easing = user_easing_function;
         
         return r;
     }());
@@ -983,7 +1008,7 @@ var drowsepost = drowsepost || {};
     /*
     Tilemap
     =============================================================================
-    Canvasモード時の軽量化
+    Canvasモード時の軽量化、拡大率の反映
     */
     (function(){
         //@override
@@ -997,7 +1022,7 @@ var drowsepost = drowsepost || {};
             }
             
             _Tilemap_createLayers.call(this);
-	    };
+        };
     }());
     
     /*
