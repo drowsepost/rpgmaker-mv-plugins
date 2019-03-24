@@ -1,9 +1,9 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Map Camera Controller
 // DP_MapZoom.js
-// Version: 0.85
+// Version: 0.86
 // 
-// Copyright (c) 2016 - 2018 canotun
+// Copyright (c) 2016 - 2019 canotun
 // Released under the MIT license.
 // http://opensource.org/licenses/mit-license.php
 //=============================================================================
@@ -49,9 +49,19 @@ var drowsepost = drowsepost || {};
  * 
  * @param Picture Size Fixation
  * @desc Exclude pictures from map zooming process
- * Default: true (ON: true / OFF: false)
+ * Default: ALL (ALL: true / OFF: false / $ / screen_ / fix_)
  * @default true
- * @type boolean
+ * @type select
+ * @option OFF
+ * @value false
+ * @option ALL
+ * @value true
+ * @option $
+ * @value $
+ * @option screen_
+ * @value screen_
+ * @option fix_
+ * @value fix_
  * 
  * @param Old Focus
  * @desc Use trackless focus similar to the old version.
@@ -174,9 +184,19 @@ var drowsepost = drowsepost || {};
  * 
  * @param Picture Size Fixation
  * @desc ピクチャをマップの拡大処理から除外します
- * Default: true (ON: true / OFF: false)
+ * Default: ALL (ALL: true / OFF: false / $ / screen_ / fix_)
  * @default true
- * @type boolean
+ * @type select
+ * @option OFF
+ * @value false
+ * @option ALL
+ * @value true
+ * @option $
+ * @value $
+ * @option screen_
+ * @value screen_
+ * @option fix_
+ * @value fix_
  * 
  * @param Old Focus
  * @desc 古いバージョンの追跡なしのフォーカスを使用します。
@@ -296,7 +316,7 @@ var drowsepost = drowsepost || {};
     var user_use_camera = Boolean(parameters['Camera Controll'] === 'true' || false);
     var user_use_camera_transfer = Boolean(parameters['Camera Controll'] === 'minimum' || false);
     var user_fix_weather = Boolean(parameters['Weather Patch'] === 'true' || false);
-    var user_fix_picture = Boolean(parameters['Picture Size Fixation'] === 'true' || false);
+    var user_fix_picture = parameters['Picture Size Fixation'];
     var user_use_oldfocus = Boolean(parameters['Old Focus'] === 'true' || false);
     var user_easing_function = parameters['Easing Function'];
     
@@ -638,6 +658,7 @@ var drowsepost = drowsepost || {};
     
     //公開
     drowsepost.camera = camera;
+    drowsepost.rendersize = dp_renderSize;
     
     /*
     Command Entry
@@ -869,11 +890,28 @@ var drowsepost = drowsepost || {};
     (function(){
         //ピクチャの配置と拡大率を、スクリーンの拡大率で打ち消す
         if(!user_fix_picture) return;
+        if(user_fix_picture === 'false') return;
+        
+        //@override
+        var _parent_loadBitmap = Sprite_Picture.prototype.loadBitmap;
+        Sprite_Picture.prototype.loadBitmap = function() {
+            _parent_loadBitmap.call(this);
+            
+            if(user_fix_picture === 'true') {
+                this._dp_fix = true;
+            } else if(!this._pictureName.indexOf(user_fix_picture)) {
+                this._dp_fix = true;
+            } else {
+                this._dp_fix = false;
+            }
+        };
         
         //@override
         var _parent_updateScale = Sprite_Picture.prototype.updateScale;
         Sprite_Picture.prototype.updateScale = function() {
             _parent_updateScale.call(this);
+            if(!this._dp_fix) return;
+            
             var picture = this.picture();
             this.scale.x = (1 / $gameScreen.zoomScale()) * (picture.scaleX() / 100);
             this.scale.y = (1 / $gameScreen.zoomScale()) * (picture.scaleY() / 100);
@@ -883,13 +921,14 @@ var drowsepost = drowsepost || {};
         var _parent_updatePosition = Sprite_Picture.prototype.updatePosition;
         Sprite_Picture.prototype.updatePosition = function() {
             _parent_updatePosition.call(this);
+            if(!this._dp_fix) return;
+            
             var picture = this.picture();
             var map_s = dp_getVisiblePos();
-            this.x = Math.floor((picture.x() + map_s.x) * (1 / $gameScreen.zoomScale()));
-            this.y = Math.floor((picture.y() + map_s.y) * (1 / $gameScreen.zoomScale()));
+            this.x = (picture.x() + map_s.x) * (1 / $gameScreen.zoomScale());
+            this.y = (picture.y() + map_s.y) * (1 / $gameScreen.zoomScale());
         };
     }());
-    
     
     /*
     Spriteset_Base
