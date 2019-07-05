@@ -1,7 +1,7 @@
 //=============================================================================
 // 🏤drowsepost Plugins - Map Camera Controller
 // DP_MapZoom.js
-// Version: 0.86
+// Version: 0.87
 // 
 // Copyright (c) 2016 - 2019 canotun
 // Released under the MIT license.
@@ -927,6 +927,26 @@ var drowsepost = drowsepost || {};
             var map_s = dp_getVisiblePos();
             this.x = (picture.x() + map_s.x) * (1 / $gameScreen.zoomScale());
             this.y = (picture.y() + map_s.y) * (1 / $gameScreen.zoomScale());
+        };
+    }());
+    
+    /*
+    Sprite_Timer
+    =============================================================================
+    タイマーの配置とサイズを調整
+    */
+    (function(){
+        //@override
+        var _parent_updatePosition = Sprite_Timer.prototype.updatePosition;
+        Sprite_Timer.prototype.updatePosition = function() {
+            _parent_updatePosition.call(this);
+
+            var _zoom = (1 / $gameScreen.zoomScale());
+
+            this.x = this.x * _zoom;
+            this.y = this.y * _zoom;
+            this.scale.x = _zoom;
+            this.scale.y = _zoom;
         };
     }());
     
