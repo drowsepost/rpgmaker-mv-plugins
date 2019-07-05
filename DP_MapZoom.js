@@ -340,10 +340,10 @@ var drowsepost = drowsepost || {};
          * 拡大率からレンダリングするべきオブジェクトのサイズを設定します。
          * @param {number} scale 
          */
-        onChange: (function(scale){
+        onChange: (function(_scale){
             if(!('_scene' in SceneManager)) return;
             if(!('_spriteset' in SceneManager._scene)) return;
-            var scale = scale || this._scale;
+            var scale = _scale || this._scale;
             var spriteset = SceneManager._scene._spriteset;
             
             //マップサイズ変更
@@ -457,7 +457,7 @@ var drowsepost = drowsepost || {};
         }
         
         return _target;
-    }
+    };
     
     /**
      * カメラターゲットから目標イベントまでのマップ上のズレ(x,y)を取得
@@ -859,7 +859,7 @@ var drowsepost = drowsepost || {};
             if (typeof $gameMap !== 'object') return;
             if ($gameMap._dp_target !== this._eventId) return;
             Game_Character.prototype.updateScroll.call(this, lastScrolledX, lastScrolledY);
-        }
+        };
         
     }());
     
@@ -987,14 +987,14 @@ var drowsepost = drowsepost || {};
             if(this._transfer) {
                 //マップ設定情報で拡大率変更
                 //イベントエディタからのテスト実行では$gameMap.metaが定義されない。
-                $gameMap._dp_scale = ('meta' in $dataMap)
-                    ? Number($dataMap.meta.zoomScale || $gameMap._dp_scale)
+                $gameMap._dp_scale = ('meta' in $dataMap) ?
+                    Number($dataMap.meta.zoomScale || $gameMap._dp_scale)
                     : $gameMap._dp_scale;
                 
                 //カメラターゲット
                 //イベントエディタからのテスト実行では$gameMap.metaが定義されない。
-                $gameMap._dp_target = ('meta' in $dataMap)
-                    ? Number($dataMap.meta.camTarget || 0)
+                $gameMap._dp_target = ('meta' in $dataMap) ?
+                    Number($dataMap.meta.camTarget || 0)
                     : 0;
                     
                 //パン
