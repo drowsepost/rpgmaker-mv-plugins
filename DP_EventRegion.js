@@ -1,7 +1,7 @@
 //=============================================================================
 // drowsepost Plugins - EventRegion
 // DP_EventRegion.js
-// Version: 0.1
+// Version: 0.2.0
 // canotun
 //=============================================================================
 
@@ -21,25 +21,39 @@ if(!('drowsepost' in window)) {
  * @desc trueでイベント同士の重なりを許可します
  * Default: true
  * @default true
+ * @type boolean
+ *
+ * @param PassOverride
+ * @desc イベントがすり抜けモードになっていてもリージョン判定を優先
+ * Default: false
+ * @default false
+ * @type boolean
  *
  * @param BlockRegion
  * @desc イベントが移動できないリージョン番号を指定します。0で無効
  * Default: 0
  * @default 0
+ * @type text
  *
  * @help
  * 通常、イベントはそのプライオリティーに関係なく
  * イベント同士重ならないように移動します。
  * 
- * EventOverlapをtrueに指定すると、イベントはプレイヤーと同じように
+ * ◆EventOverlap
+ * trueに指定すると、イベントはプレイヤーと同じように
  * プライオリティーとマップの通行設定に従って移動し、
  * 通行不可設定のタイルでない限りイベント同士の重なりを許容します。
  * 
- * BlockRegionに任意のリージョン番号を指定すると、
+ * ◆PassOverride
+ * trueに設定することで、イベントのすり抜け設定よりリージョンの通行判定を優先します
+ * 
+ * ◆BlockRegion
+ * 任意のリージョン番号を指定すると、
  * イベントはそのリージョンを通行出来ないものとして扱います。
  * 文字列で"auto"を指定すると、イベントは生成された時点の座標のリージョンと
  * 同じ範囲でのみ移動するようになります。
  * 
+ * ◆コマンド
  * DP_EVENT_BLOCKERコマンドないし、
  * drowsepost.event.blockregeon変数にリージョン番号ないし"auto"を指定すると
  * BlockRegionの指定値を変更することが出来ます。
@@ -64,6 +78,20 @@ if(!('drowsepost' in window)) {
     var parameters = PluginManager.parameters('DP_EventRegion');
     var user_overlap = Boolean(parameters['EventOverlap'] === 'true' || false);
     var user_region = (parameters['BlockRegion'] == 'auto')? 'auto' : Number(parameters['BlockRegion'] || 0);
+    var user_override = Boolean(parameters['PassOverride'] === 'true' || false);
+    
+    var isRegionBlocked = function(x, y, originalRegionId) {
+        var map_region = $gameMap.regionId(x, y);
+        var data_region = $gameMap._dp_event_block_region;
+        
+        if(data_region === 'auto') {
+            if(map_region != originalRegionId) return true;
+        } else if(data_region > 0) {
+            if(map_region == data_region) return true;
+        }
+        
+        return false;
+    };
     
     /*
     Game Event
@@ -78,13 +106,8 @@ if(!('drowsepost' in window)) {
     
     var _Game_Event_isCollidedWithEvents = Game_Event.prototype.isCollidedWithEvents;
     Game_Event.prototype.isCollidedWithEvents = function(x, y) {
-        var map_region = $gameMap.regionId(x, y);
-        var data_region = $gameMap._dp_event_block_region;
-        
-        if(data_region === 'auto') {
-            if(map_region != this._originalRegionId) return true;
-        } else if(data_region > 0) {
-            if(map_region == data_region) return true;
+        if(isRegionBlocked(x, y, this._originalRegionId)) {
+            return true;
         }
         
         if((!user_overlap) || ('YEP_CoreEngine' in Imported)){
@@ -96,6 +119,25 @@ if(!('drowsepost' in window)) {
         }
         
         return this.isNormalPriority();
+    };
+    
+    var _Game_Event_canPass = Game_Event.prototype.canPass;
+    Game_Event.prototype.canPass = function(x, y, d) {
+        var r = _Game_Event_canPass.call(this, x, y, d);
+        
+        if(user_override && r) {
+            var x2 = $gameMap.roundXWithDirection(x, d);
+            var y2 = $gameMap.roundYWithDirection(y, d);
+            
+            if(isRegionBlocked(x2, y2, this._originalRegionId)) {
+                return false;
+            } else {
+                return true;
+            }
+            
+        } else {
+            return r;
+        }
     };
     
     /*
@@ -138,6 +180,6 @@ if(!('drowsepost' in window)) {
             drowsepost.event.blockregeon(_a[0]);
         }(this, command, args));
         
-    }
+    };
     
 }());
